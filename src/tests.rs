@@ -4,44 +4,9 @@ use sci_file::{
     OutputFile, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_path,
     deserialize_json_from_path,
 };
-use simulation::InputConfig;
+use simulation::simulation::InputConfig;
 use simulation::{Integrator, System};
 use std::path::{Path, PathBuf};
-
-struct Test {
-    pub data: Universe,
-}
-
-// Mock System implementation without writing any output.
-impl System for Test {
-    type Data = Universe;
-    type Output = OutputFile;
-
-    fn new(_: OutputFile, data: Universe) -> Self {
-        Self { data }
-    }
-
-    fn derive(
-        &mut self,
-        time: f64,
-        y: &[f64],
-        dy: &mut [f64],
-    ) -> Result<(), Box<(dyn std::error::Error + Send + Sync + 'static)>> {
-        // Update the state of the universe based on the current integration values.
-        self.data.update(time, y)?;
-        // Compute the derivatives using the updated values.
-        force(dy, &mut self.data)?;
-        Ok(())
-    }
-
-    fn solout(
-        &mut self,
-        _time: f64,
-        _y: &[f64],
-    ) -> Result<(), Box<(dyn std::error::Error + Send + Sync + 'static)>> {
-        Ok(())
-    }
-}
 
 fn test_simulation(config: PathBuf) -> Universe {
     // Parse the config file.
@@ -75,17 +40,14 @@ fn test_simulation(config: PathBuf) -> Universe {
 
     // Initial values for the integrator.
     let y = config.universe.integration_quantities();
-    let mut system = Test {
-        data: config.universe,
-    };
     config
         .integrator
         .initialise(config.initial_time, config.final_time, &y);
 
     // Run the full integration.
-    let _ = config.integrator.integrate(&mut system).unwrap();
+    let _ = config.integrator.integrate(&mut config.universe).unwrap();
 
-    system.data
+    config.universe
 }
 
 fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Universe) {
@@ -103,8 +65,8 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
             match err {
                 sci_file::Error::FileIo(_) => {
                     // Saved file does not exist save the results.
-                    let mut writer = OutputFile::new(&path).unwrap();
-                    writer.write_json(&result).unwrap();
+                    let mut writer = OutputFile::new_json(&path).unwrap();
+                    writer.write(&result).unwrap();
                     panic!("comparison file `{path}` did not exist, so it was created");
                 }
                 _ => {
@@ -121,35 +83,35 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
 #[test]
 fn example_no_effects() {
     let result = test_simulation("examples/no_effects.conf".into());
-    compare_or_create("examples/no_effects.expected", &result);
+    compare_or_create("examples/no_effects_expected.json", &result);
 }
 
 #[test]
 fn example_tides() {
     let result = test_simulation("examples/tides.conf".into());
-    compare_or_create("examples/tides.expected", &result);
+    compare_or_create("examples/tides_expected.json", &result);
 }
 
 #[test]
 fn example_magnetic() {
     let result = test_simulation("examples/magnetic.conf".into());
-    compare_or_create("examples/magnetic.expected", &result);
+    compare_or_create("examples/magnetic_expected.json", &result);
 }
 
 #[test]
 fn example_magnetic_tides() {
     let result = test_simulation("examples/magnetic_tides.conf".into());
-    compare_or_create("examples/magnetic_tides.expected", &result);
+    compare_or_create("examples/magnetic_tides_expected.json", &result);
 }
 
 #[test]
 fn example_kaula_solid() {
-    //    let result = test_simulation("examples/kaula_solid.conf".into());
-    //    compare_or_create("examples/kaula_solid.expected", &result);
+    let result = test_simulation("examples/kaula_solid.conf".into());
+    compare_or_create("examples/kaula_solid_expected.json", &result);
 }
 
 #[test]
 fn example_all_effects() {
     let result = test_simulation("examples/all_effects.conf".into());
-    compare_or_create("examples/all_effects.expected", &result);
+    compare_or_create("examples/all_effects_expected.json", &result);
 }

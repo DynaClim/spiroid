@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rayon::prelude::*;
 use sci_file::{
-    deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_dir_path,
+    JsonLFile, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_dir_path,
     deserialize_csv_rows_from_path,
 };
 use spiroid_lib::{
@@ -9,7 +9,7 @@ use spiroid_lib::{
 };
 
 fn main() -> Result<()> {
-    let simulations = Simulation::<Universe, Spiroid>::new()?;
+    let simulations = Simulation::<Universe, JsonLFile>::new()?;
     simulations
         .into_par_iter()
         .map(|mut simulation| {
@@ -17,7 +17,7 @@ fn main() -> Result<()> {
             let final_time = simulation.final_time;
 
             // TODO if these immutable data structures can be shared between threads, it may be better to initialise only once.
-            if let ParticleType::Star(star) = &mut simulation.system.data.central_body.kind {
+            if let ParticleType::Star(star) = &mut simulation.system.central_body.kind {
                 // Load stellar evolution data from file if stellar evolution is enabled.
                 if let Some(star_file) = star.evolution_file() {
                     let mut stellar_data = deserialize_csv_rows_from_path::<StarCsv>(star_file)?;
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
             }
 
             // Load love number data from file(s) if kaula tides are enabled.
-            if let Some(kaula) = simulation.system.data.orbiting_body.tides.kaula_get_mut() {
+            if let Some(kaula) = simulation.system.orbiting_body.tides.kaula_get_mut() {
                 if let Some(solid_file) = kaula.solid_file() {
                     let love_solid = deserialize_csv_column_vectors_from_path::<f64>(solid_file)?;
                     kaula.initialise_love_number_solid(&love_solid);
@@ -45,10 +45,10 @@ fn main() -> Result<()> {
             }
 
             // Initialise the universe (star, planet, etc).
-            simulation.system.data.initialise(initial_time)?;
+            simulation.system.initialise(initial_time)?;
 
             // Initialise the values to integrate.
-            let y = simulation.system.data.integration_quantities();
+            let y = simulation.system.integration_quantities();
             // y[0] = Star radiative zone angular momentum
             // y[1] = Star convective zone angular momentum
             // y[2] = Planet semi-major axis^6.5

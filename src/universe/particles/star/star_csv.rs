@@ -14,9 +14,9 @@ pub struct StarCsv {
     luminosity: f64,                   // (J.s-1)
 
     // Calculated internally, not included in the CSV.
-    #[serde(default)]
+    #[serde(skip)]
     convective_moment_of_inertia_derivative: f64,
-    #[serde(default)]
+    #[serde(skip)]
     radiative_mass_derivative: f64,
 }
 

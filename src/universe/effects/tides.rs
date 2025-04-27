@@ -4,9 +4,10 @@ pub use kaula::Kaula;
 use crate::universe::particles::{Planet, Star};
 
 use anyhow::Result;
+use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone, Encode, Decode)]
 pub enum TidalModel {
     #[default]
     Disabled,

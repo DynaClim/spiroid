@@ -1,6 +1,7 @@
+use bincode::Encode;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone, Encode)]
 pub(crate) struct Polynomials {
     pub(crate) inclination_2mp_squared: [[f64; 3]; 3],
     pub(crate) inclination_2mp_squared_derivative: [[f64; 3]; 3],

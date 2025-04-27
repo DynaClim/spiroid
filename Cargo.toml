@@ -23,12 +23,14 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140", features = ["float_roundtrip"] }
 astro-const = { git = "https://github.com/DynaClim/astro-const.git" }
 math-macros = { git = "https://github.com/DynaClim/math-macros.git" }
-sci-file = { git = "https://github.com/DynaClim/sci-file.git" }
-simulation = { git = "https://github.com/DynaClim/simulation.git"}
+sci-file = { path = "../sci-file"}
+simulation = { path = "../simulation"}
+bincode = "2.0.1"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 assert_approx_eq = "1.1.0"
+postcard = { version = "1.1.1", default-features = false, features = ["use-std"] }
 
 [lints.rust]
 unsafe_code = "forbid"

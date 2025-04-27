@@ -6,9 +6,10 @@ pub use effects::Kaula;
 pub use particles::{Particle, ParticleType, Planet, Star, StarCsv};
 
 use anyhow::Result;
+use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Encode, Decode)]
 pub struct Universe {
     #[serde(default)]
     time: f64,

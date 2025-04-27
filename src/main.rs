@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rayon::prelude::*;
 use sci_file::{
-    JsonLFile, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_dir_path,
+    deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_dir_path,
     deserialize_csv_rows_from_path,
 };
 use spiroid_lib::{
@@ -9,7 +9,7 @@ use spiroid_lib::{
 };
 
 fn main() -> Result<()> {
-    let simulations = Simulation::<Universe, JsonLFile>::new()?;
+    let simulations = Simulation::<Universe>::new()?;
     simulations
         .into_par_iter()
         .map(|mut simulation| {

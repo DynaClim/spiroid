@@ -7,15 +7,16 @@ pub(crate) mod star;
 pub use planet::Planet;
 pub use star::{Star, StarCsv};
 
+use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Encode, Decode)]
 pub enum ParticleType {
     Planet(Planet),
     Star(Star),
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Encode, Decode)]
 pub struct Particle {
     pub kind: ParticleType,
     #[serde(default)]

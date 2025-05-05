@@ -1,8 +1,8 @@
 use super::*;
 use pretty_assertions::assert_eq;
 use sci_file::{deserialize_postcard_from_path,
-create_buffered_file_reader,
-    OutputFile, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_path,
+create_buffered_file_reader, FileFormat, Compression,
+    OutputBuilder, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_path,
     deserialize_json_from_path,
 };
 use simulation::simulation::InputConfig;
@@ -68,7 +68,10 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
             match err {
                 sci_file::Error::FileIo(_) => {
                     // Saved file does not exist save the results.
-                    let mut writer = OutputFile::new(&path).unwrap();
+                    let mut writer = OutputBuilder::new(&path)
+                        .format(FileFormat::Json)
+                        .build()
+                        .unwrap();
                     writer.write(&result).unwrap();
                     panic!("comparison file `{path}` did not exist, so it was created");
                 }
@@ -81,22 +84,6 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
             }
         }
     }
-}
-
-// Ensure that the same fields are being serialized/deserialized (serde) as encoded/decoded (bincode)
-#[test]
-fn bincode_vs_serde() {
-    let path = "examples/all_effects.conf";
-    let universe = test_simulation(path.into());
-
-    let tmp = serde_json::to_string(&universe).unwrap();
-    let serde_universe: Universe = serde_json::from_str(&tmp).unwrap();
-
-    let tmp = bincode::encode_to_vec(&universe, bincode::config::standard()).unwrap();
-    let (bincode_universe, _): (Universe, usize) =
-        bincode::decode_from_slice(&tmp, bincode::config::standard()).unwrap();
-
-    assert_eq!(bincode_universe, serde_universe)
 }
 
 #[test]
@@ -141,45 +128,6 @@ fn postcard_vs_serde() {
 
 
 #[test]
-fn bincode_roundtrip() {
-    let path = "examples/all_effects.conf";
-    let config: InputConfig<Universe> = deserialize_json_from_path(&path).unwrap();
-    let universe = config.universe;
-
-    let tmp = bincode::encode_to_vec(&universe, bincode::config::standard()).unwrap();
-    let (bincode_universe, _): (Universe, usize) =
-        bincode::decode_from_slice(&tmp, bincode::config::standard()).unwrap();
-
-    assert_eq!(universe, bincode_universe)
-}
-
-#[test]
-fn bincode_multiread() {
-    let path = "output/run_2/magnetic.bincode2";
-    let mut reader = create_buffered_file_reader(&path).unwrap();
-    let mut count = 0;
-    loop {
-        let peek = reader.fill_buf().unwrap();
-        dbg!(peek.len());
-        if peek.is_empty() {
-            break;
-        }
-        let data: Universe = match bincode::decode_from_std_read(&mut reader, bincode::config::standard()) {
-            Ok(data) => data,
-            Err(err) => {
-                dbg!(count);
-                dbg!(&err);
-                panic!("Error deserializing data: {}", err);
-
-            },
-        };
-        // Do something with the deserialized data
-        count += 1;
-//        dbg!(&data, count);
-    }
-}
-
-#[test]
 fn postcard_multiread() {
     let path = "output/run_1/magnetic.postcard";
     let data: Vec<Universe> = deserialize_postcard_from_path(&path).unwrap();
@@ -191,10 +139,26 @@ fn postcard_size() {
     let path = "output/run_1/magnetic.postcard";
     let data: Vec<Universe> = deserialize_postcard_from_path(&path).unwrap();
 
-    let mut outfile = OutputFile::new(&"output/run_1/magnetic_loop.pcsz").unwrap();
+    let mut outfile = OutputBuilder::new(&"output/run_1/magnetic_loop")
+        .format(FileFormat::Postcard)
+        .compression(Compression::Snappy)
+        .build()
+        .unwrap();
+
+    let mut outfile2 = OutputBuilder::new(&"output/run_1/magnetic_all")
+        .format(FileFormat::Postcard)
+        .compression(Compression::Snappy)
+        .build()
+        .unwrap();
+
+    let mut v = vec![];
     for d in &data {
         outfile.write(&d).unwrap();
+        v.push(d);
     }
+
+    outfile2.write(&v).unwrap();
+
     assert!(data.len() != 0);
 }
 

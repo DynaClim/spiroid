@@ -1,4 +1,4 @@
-use crate::constants::{SECONDS_IN_YEAR, SOLAR_MASS, SOLAR_RADIUS};
+use crate::constants::{SECONDS_IN_YEAR, SOLAR_LUMINOSITY, SOLAR_MASS, SOLAR_RADIUS};
 use serde::{Deserialize, Serialize};
 
 // Interpolation values deserialized from user provided CSV.
@@ -11,7 +11,7 @@ pub struct StarCsv {
     convective_mass: f64,              // (kg)
     radiative_moment_of_inertia: f64,  // (kg.m2)
     convective_moment_of_inertia: f64, // (kg.m2)
-    luminosity: f64,                   // solar units
+    luminosity: f64,                   // (J.s-1)
 
     // Calculated internally, not included in the CSV.
     #[serde(default)]
@@ -41,6 +41,7 @@ impl StarCsv {
         self.age *= SECONDS_IN_YEAR;
         self.radius *= SOLAR_RADIUS;
         self.mass *= SOLAR_MASS;
+        self.luminosity *= SOLAR_LUMINOSITY * 1e24;
         self.convective_radius *= SOLAR_RADIUS;
         self.convective_mass *= SOLAR_MASS;
         self.radiative_moment_of_inertia *= self.mass * self.radius.powi(2);

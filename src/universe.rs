@@ -2,7 +2,6 @@ pub(crate) mod effects;
 pub(crate) mod particles;
 pub(crate) mod physics;
 
-use crate::SECONDS_IN_YEAR;
 pub use effects::Kaula;
 pub use particles::{Particle, ParticleType, Planet, Star, StarCsv};
 
@@ -24,8 +23,6 @@ impl Universe {
     #[allow(clippy::missing_errors_doc)]
     // Apply the unit conversions to initial input values.
     pub fn initialise(&mut self, time: f64) -> Result<()> {
-        self.disk_lifetime *= SECONDS_IN_YEAR;
-
         if let ParticleType::Star(star) = &mut self.central_body.kind {
             star.initialise(time)?;
         }

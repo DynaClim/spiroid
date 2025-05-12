@@ -71,6 +71,9 @@ def parse_jsonl(file_path):
                 key = sanitise_key(key)
                 value = lookup.get(value, value)
 
+                # Convert units for specific values.
+                value = convert_units(key, value)
+
                 if key in dict:
                     dict[key].append(value)
                 else:
@@ -118,7 +121,6 @@ def create_plot(title, x_label, y_label, subplots, logscale=False):
     # Plot all subplots, assigning each subplot a distinct color.
     for data in subplots:
         (name, x, y) = data
-        y = [convert_units(y_label, a) for a in y]
         plt.plot(x, y, "", label=name, color=colors.pop(), alpha=0.5)
 
     # Convert to logscale if required.
@@ -211,8 +213,6 @@ def main():
 
         # Remove unwanted keys (keys specified as unworth for plotting).
         all_keys = filter_keys(all_keys)
-        # Convert units for x axis.
-        all_data[x_label] = [convert_units(x_label, a) for a in all_data[x_label]]
         for y_label in all_keys:
             print(f"Making graph: {y_label}")
             subplots = create_merged_subplots(x_label, y_label, all_data)
@@ -220,8 +220,6 @@ def main():
     else:
         # Create a plot for each quantity for each data file.
         for path, data in all_data.items():
-            # Convert units for x axis.
-            data[x_label] = [convert_units(x_label, a) for a in data[x_label]]
             # Set the output directory to save the plots
             output_path = os.path.dirname(path)
             all_keys = {*data.keys()}

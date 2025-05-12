@@ -150,14 +150,14 @@ Evolution of the star can be enabled by setting the `evolution` property of the 
 (e.g. `examples/data/star/evolution/savgol_08.csv`).
 The format of the file must be CSV (Comma Separated Values) with the following header and fields: 
 
-- `age`
-- `radius`
-- `mass`
-- `convective_radius`
-- `convective_mass`
+- `age` (years)
+- `radius` (solar radius)
+- `mass` (solar mass)
+- `convective_radius` (solar radius)
+- `convective_mass` (solar mass)
 - `radiative_moment_of_inertia`
 - `convective_moment_of_inertia`
-- `luminosity`
+- `luminosity` (solar luminosity)
 
 ### Magnetism (`Particle`)
 Magnetic interaction (initiated by the star) can be toggled into the following states:
@@ -167,7 +167,7 @@ Magnetic interaction (initiated by the star) can be toggled into the following s
 
 #### Wind
 Set the `magnetism` property of the `central_body` `Particle` to `Wind`.
-Ensure that the `Planet` and `Star` have non-zero values for `magnetic_fields`.
+Set the desired values of `magnetic_field` for `Planet` and `Star`.
 
 ### Tides
 

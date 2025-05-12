@@ -46,8 +46,6 @@ impl System for Test {
 fn test_simulation(config: PathBuf) -> Universe {
     // Parse the config file.
     let mut config: InputConfig<Universe> = deserialize_json_from_path(&config).unwrap();
-    config.initial_time *= SECONDS_IN_YEAR;
-    config.final_time *= SECONDS_IN_YEAR;
 
     // Load stellar evolution data from file.
     if let ParticleType::Star(star) = &mut config.universe.central_body.kind {

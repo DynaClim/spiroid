@@ -5,7 +5,7 @@ use sci_file::{
     deserialize_csv_rows_from_path,
 };
 use spiroid_lib::{
-    ParticleType, Simulation, Spiroid, StarCsv, Universe, constants::SECONDS_IN_YEAR,
+    ParticleType, Simulation, Spiroid, StarCsv, Universe
 };
 
 fn main() -> Result<()> {
@@ -13,9 +13,8 @@ fn main() -> Result<()> {
     simulations
         .into_par_iter()
         .map(|mut simulation| {
-            // Convert simulation duration from years to seconds.
-            let initial_time = simulation.initial_time * SECONDS_IN_YEAR;
-            let final_time = simulation.final_time * SECONDS_IN_YEAR;
+            let initial_time = simulation.initial_time;
+            let final_time = simulation.final_time;
 
             // TODO if these immutable data structures can be shared between threads, it may be better to initialise only once.
             if let ParticleType::Star(star) = &mut simulation.system.data.central_body.kind {
@@ -25,7 +24,7 @@ fn main() -> Result<()> {
                     // Configure the stellar evolution interpolator.
                     let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
                     star.initialise_evolution(&star_ages, &star_values);
-                };
+                }
             }
 
             // Load love number data from file(s) if kaula tides are enabled.

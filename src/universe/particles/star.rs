@@ -164,10 +164,6 @@ impl Star {
     }
 
     pub(crate) fn initialise(&mut self, time: f64) -> Result<()> {
-        self.mass *= SOLAR_MASS;
-        // Convert from years to seconds.
-        self.core_envelope_coupling_constant *= SECONDS_IN_YEAR;
-
         if let Evolution::Interpolated { .. } = self.evolution {
             self.stellar_evolution(time)?;
         }

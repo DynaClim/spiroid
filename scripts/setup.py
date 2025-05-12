@@ -10,7 +10,7 @@ import sys
 
 sys.dont_write_bytecode = True
 from spiroid.configmaker import make_configs
-from units import SECONDS_IN_YEAR
+from units import AU, SECONDS_IN_YEAR, SOLAR_MASS
 
 
 def simulator_setup():
@@ -22,14 +22,14 @@ def simulator_setup():
     # Produces test_1.json.conf, test_2.json.conf, test_3.json.conf etc.
     simulation = {
         "name": "test",
-        # Simulation start time, years
-        "start_time": 1.0e6,
-        # Simulation end time, years
-        "final_time": 1.0e9,
+        # Simulation start time, seconds (from years)
+        "start_time": SECONDS_IN_YEAR * 1.0e6,
+        # Simulation end time, seconds (from years)
+        "final_time": SECONDS_IN_YEAR * 1.0e9,
     }
 
-    # years
-    disk_lifetime = 2.482e6
+    # seconds (from years)
+    disk_lifetime = SECONDS_IN_YEAR * 2.482e6
 
     return (simulation, disk_lifetime)
 
@@ -58,8 +58,8 @@ def planet_setup(effects):
         "mass": [1.898e26],
         # m
         "radius": [3.255e7],
-        # AU
-        "semi_major_axis": [0.019],
+        # m (from AU)
+        "semi_major_axis": [AU * x for x in [0.019]],
         # Gauss
         "magnetic_field": [10.0],
         "is_destroyed": [False],
@@ -71,7 +71,7 @@ def planet_setup(effects):
             {
                 # rad.s
                 "spin": [8.093879511357418e-07],
-                # No units.
+                # No units
                 "eccentricity": [0.005],
                 # rad
                 "inclination": [0.3490658503988659],
@@ -81,7 +81,7 @@ def planet_setup(effects):
                 "pericentre_omega": [0.0],
                 # rad
                 "spin_inclination": [0.34906584951436426],
-                # No units.
+                # No units
                 "radius_of_gyration": [0.33070368308499226],
                 "type_and_file": [
                     (
@@ -100,12 +100,12 @@ def star_setup(effects):
     ####################### STAR SETUP ###########################
     ##############################################################
     star_base = {
-        # Msun
-        "mass": [0.8],
+        # kg (from Msun)
+        "mass": [SOLAR_MASS * x for x in [0.8]],
         # rad.s-1
         "spin": [5.194e-05],
-        # years
-        "core_envelope_coupling_constant": [1.171e7],
+        # seconds (from years)
+        "core_envelope_coupling_constant": [SECONDS_IN_YEAR * x for x in [1.171e7]],
         # Ohm-1
         "footpoint_conductance": [5.8e4],
         "star_file_path": [None],  # Do not edit.
@@ -117,7 +117,7 @@ def star_setup(effects):
     else:
         # Set the initial star values that would otherwise be provided by savgol data if evolution were enabled.
         # Must be non-zero (to avoid NaN).
-        # No units.
+        # No units
         star_base["radiative_moment_of_inertia"] = [1.0]
         star_base["convective_moment_of_inertia"] = [1.0]
 

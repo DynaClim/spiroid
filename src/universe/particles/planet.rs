@@ -1,4 +1,4 @@
-use crate::constants::{AU, GRAVITATIONAL};
+use crate::constants::GRAVITATIONAL;
 use crate::universe::particles::{ParticleT, magnetic_pressure};
 
 use serde::{Deserialize, Serialize};
@@ -69,7 +69,6 @@ impl Planet {
 
     /// Initialise the units and set initial tidal and magnetic values.
     pub(crate) fn initialise(&mut self) {
-        self.semi_major_axis *= AU;
         // 1.0E-4 is a Gauss to Tesla unit conversion, to go back to S.I.
         self.magnetic_pressure = magnetic_pressure(self.magnetic_field * 1.0E-4);
         // Only relevant if kaula tides enabled.

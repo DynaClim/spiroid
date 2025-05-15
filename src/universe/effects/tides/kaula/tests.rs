@@ -6,14 +6,14 @@ use crate::universe::particles::planet::tests::test_planet_kaula;
 use pretty_assertions::assert_eq;
 
 #[cfg(test)]
-pub fn test_kaula() -> Box<Kaula> {
-    Box::new(Kaula {
+pub fn test_kaula() -> Kaula {
+    Kaula {
         particle_type: ParticleComposition::Solid {
             solid_file: "dummy".into(),
         },
         polynomials: test_polynomials(),
         love_number: test_love_number(),
-    })
+    }
 }
 
 #[test]

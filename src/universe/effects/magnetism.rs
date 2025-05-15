@@ -5,10 +5,9 @@ use crate::constants::{
 };
 use crate::universe::particles::{Planet, Star, magnetic_pressure};
 
-use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone, Encode, Decode)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum MagneticModel {
     #[default]
     Disabled,
@@ -35,7 +34,6 @@ impl MagneticModel {
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, Clone)]
 #[serde(default)]
-#[derive(Encode, Decode)]
 // Computation of a 1D magnetized isothermal wind to quantify angular momentum exchange in Star-Planet Magnetic Interactions
 pub struct IsothermalWind {
     speed_of_sound: f64,                    // (m.s-1)

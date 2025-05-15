@@ -14,17 +14,17 @@ pub(crate) fn force(dy: &mut [f64], universe: &mut Universe) -> Result<()> {
         todo!();
     };
 
-    // Star properties
+    // Star derivatives
     dy[0] = star_radiative_zone_angular_momentum_derivative(star);
     dy[1] = star_convective_zone_angular_momentum_derivative(star, universe.disk_is_dissipated);
 
-    // If the planet is destroyed, only the star properties are computed.
+    // If the planet is destroyed, only the star derivatives are computed.
     if planet.is_destroyed {
         return Ok(());
     }
 
     // Constant time lag semi major axis derivative.
-    // Set to 0 if tides are disabled on the star.
+    // Is 0 if tides are disabled on the star.
     dy[2] = planet_semi_major_axis_13_div_2_derivative(planet, star);
 
     // Immutable borrow of kaula properties if kaula planet tides enabled.

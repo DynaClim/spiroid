@@ -5,7 +5,7 @@ use crate::universe::particles::planet::tests::{test_planet, test_planet_magneti
 use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_TIME};
 
 use pretty_assertions::assert_eq;
-use sci_file::deserialize_csv_rows_from_path;
+use sci_file::read_csv_rows_from_file;
 
 fn add_interpolate_to_test_star(star: &mut Star) {
     star.evolution = Evolution::Interpolated {
@@ -14,7 +14,7 @@ fn add_interpolate_to_test_star(star: &mut Star) {
     };
     // Load stellar evolution data from file.
     if let Some(star_file_path) = star.evolution_file() {
-        let mut stellar_data = deserialize_csv_rows_from_path::<StarCsv>(star_file_path).unwrap();
+        let mut stellar_data = read_csv_rows_from_file::<StarCsv>(star_file_path).unwrap();
         // Configure the stellar evolution interpolator.
         let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
         star.initialise_evolution(&star_ages, &star_values);

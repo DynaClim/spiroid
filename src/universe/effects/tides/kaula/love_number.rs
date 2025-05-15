@@ -5,13 +5,12 @@ use crate::universe::particles::ParticleT;
 use crate::utils::map_3d_to_1d;
 use sci_file::Interpolator;
 
-use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use anyhow::Result;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone, Encode, Decode)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum ParticleComposition {
     #[default]
     None,
@@ -199,7 +198,7 @@ impl LoveNumber {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Encode, Decode)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum ThermalTideModel {
     Analytic,
     Auclair,

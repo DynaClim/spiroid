@@ -4,17 +4,16 @@ pub use kaula::Kaula;
 use crate::universe::particles::{Planet, Star};
 
 use anyhow::Result;
-use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone, Encode, Decode)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum TidalModel {
     #[default]
     Disabled,
     // Equilibrium tide dissipation given as the dimensionless sigma_bar_star from Bolmont & Mathis (2016), Eq. 8
     ConstantTimeLag(f64),
     KaulaTides {
-        kaula: Box<Kaula>,
+        kaula: Kaula,
     },
 }
 

@@ -1,13 +1,11 @@
 use crate::constants::GRAVITATIONAL;
 use crate::universe::particles::{ParticleT, magnetic_pressure};
 
-use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
-#[derive(Decode, Encode)]
 pub struct Planet {
     // Input parameters
     pub(crate) mass: f64,            // Kg

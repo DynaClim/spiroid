@@ -9,7 +9,6 @@ pub use star_csv::StarCsv;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use bincode::{Decode, Encode};
 use sci_file::Interpolator;
 
 #[derive(Deserialize, Serialize, PartialEq, Clone, Default)]
@@ -21,69 +20,6 @@ enum Evolution {
         #[serde(skip)]
         interpolator: Interpolator<Vec<f64>>,
     },
-}
-
-// Custom implmentation for Encode to ignore specific fields
-// i.e. don't binary encode the interpolated evolution data
-// (equivalent of serde skip_serializing)
-impl Encode for Evolution {
-    fn encode<E: bincode::enc::Encoder>(
-        &self,
-        encoder: &mut E,
-    ) -> Result<(), bincode::error::EncodeError> {
-        match self {
-            Self::Disabled => {
-                <u32 as Encode>::encode(&(0u32), encoder)?;
-            }
-            Self::Interpolated { star_file_path, .. } => {
-                <u32 as Encode>::encode(&(1u32), encoder)?;
-                Encode::encode(star_file_path, encoder)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<Context> Decode<Context> for Evolution {
-    fn decode<D: bincode::de::Decoder<Context = Context>>(
-        decoder: &mut D,
-    ) -> core::result::Result<Self, bincode::error::DecodeError> {
-        let variant_index = <u32 as Decode<D::Context>>::decode(decoder)?;
-
-        match variant_index {
-            0u32 => Ok(Self::Disabled),
-            1u32 => Ok(Self::Interpolated {
-                star_file_path: Decode::decode(decoder)?,
-                interpolator: Default::default(),
-            }),
-            variant => Err(bincode::error::DecodeError::UnexpectedVariant {
-                found: variant,
-                type_name: "Evolution",
-                allowed: &bincode::error::AllowedEnumVariants::Range { min: 0, max: 1 },
-            }),
-        }
-    }
-}
-
-impl<'de, Context> bincode::BorrowDecode<'de, Context> for Evolution {
-    fn borrow_decode<D: bincode::de::BorrowDecoder<'de, Context = Context>>(
-        decoder: &mut D,
-    ) -> Result<Self, bincode::error::DecodeError> {
-        let variant_index = <u32 as Decode<D::Context>>::decode(decoder)?;
-
-        match variant_index {
-            0u32 => Ok(Self::Disabled),
-            1u32 => Ok(Self::Interpolated {
-                star_file_path: Decode::decode(decoder)?,
-                interpolator: Default::default(),
-            }),
-            variant => Err(bincode::error::DecodeError::UnexpectedVariant {
-                found: variant,
-                type_name: "Evolution",
-                allowed: &bincode::error::AllowedEnumVariants::Range { min: 0, max: 1 },
-            }),
-        }
-    }
 }
 
 // Custom debug implementation to only print the stellar evolution file name instead of a data dump.
@@ -101,7 +37,6 @@ impl std::fmt::Debug for Evolution {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
-#[derive(Decode, Encode)]
 pub struct Star {
     // Input parameters
     pub(crate) mass: f64,                            // (kg)

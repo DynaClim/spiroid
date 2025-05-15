@@ -29,12 +29,15 @@ impl System for Universe {
         Ok(())
     }
 
-    // Function that outputs each step of the solution.
-    fn solout(
+    // Update the state of the universe, prior to derivation or solution output.
+    fn update(
         &mut self,
-        _time: f64,
-        _y: &[f64],
+        time: f64,
+        y: &[f64],
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Update the state of the universe based on the current integration values.
+        Universe::update(self, time, y)?;
+
         Ok(())
     }
 }

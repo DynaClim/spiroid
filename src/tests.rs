@@ -1,25 +1,26 @@
 use super::*;
-use pretty_assertions::assert_eq;
-use sci_file::{deserialize_postcard_from_path,
-create_buffered_file_reader, FileFormat, Compression,
-    OutputBuilder, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_path,
-    deserialize_json_from_path,
-};
-use simulation::simulation::InputConfig;
-use simulation::Integrator;
-use std::path::{Path, PathBuf};
-use std::io::BufRead;
 use postcard;
+use pretty_assertions::assert_eq;
+use sci_file::{
+    OutputWriter, create_buffered_file_reader, read_csv_columns_from_file, read_csv_rows_from_file,
+    read_json_from_file,
+};
+use simulation::Integrator;
+use simulation::simulation::InputConfig;
+use std::io::BufRead;
+use std::path::{Path, PathBuf};
 
 fn test_simulation(config: PathBuf) -> Universe {
     // Parse the config file.
-    let mut config: InputConfig<Universe> = deserialize_json_from_path(&config).unwrap();
+    let mut config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
+    config.initial_time *= SECONDS_IN_YEAR;
+    config.final_time *= SECONDS_IN_YEAR;
 
     // Load stellar evolution data from file.
     if let ParticleType::Star(star) = &mut config.universe.central_body.kind {
         // Load stellar evolution data from file if stellar evolution is enabled.
         if let Some(star_file) = star.evolution_file() {
-            let mut stellar_data = deserialize_csv_rows_from_path::<StarCsv>(star_file).unwrap();
+            let mut stellar_data = read_csv_rows_from_file::<StarCsv>(star_file).unwrap();
             // Configure the stellar evolution interpolator.
             let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
             star.initialise_evolution(&star_ages, &star_values);
@@ -29,11 +30,11 @@ fn test_simulation(config: PathBuf) -> Universe {
     // Load love number data from file(s) if kaula tides are enabled.
     if let Some(kaula) = config.universe.orbiting_body.tides.kaula_get_mut() {
         if let Some(solid_file) = kaula.solid_file() {
-            let love_solid = deserialize_csv_column_vectors_from_path::<f64>(solid_file).unwrap();
+            let love_solid = read_csv_columns_from_file::<f64>(solid_file).unwrap();
             kaula.initialise_love_number_solid(&love_solid);
         }
         if let Some(ocean_file) = kaula.ocean_file() {
-            let love_ocean = deserialize_csv_column_vectors_from_path::<f64>(ocean_file).unwrap();
+            let love_ocean = read_csv_columns_from_file::<f64>(ocean_file).unwrap();
             kaula.initialise_love_number_ocean(&love_ocean);
         }
     }
@@ -54,7 +55,7 @@ fn test_simulation(config: PathBuf) -> Universe {
 }
 
 fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Universe) {
-    match deserialize_json_from_path::<Universe>(&path) {
+    match read_json_from_file::<Universe>(&path) {
         Ok(expected) => {
             // Saved file exists, compare the results.
             // We roundtrip our `Universe` through serde before comparison
@@ -68,10 +69,7 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
             match err {
                 sci_file::Error::FileIo(_) => {
                     // Saved file does not exist save the results.
-                    let mut writer = OutputBuilder::new(&path)
-                        .format(FileFormat::Json)
-                        .build()
-                        .unwrap();
+                    let mut writer = OutputWriter::new(&path).unwrap();
                     writer.write(&result).unwrap();
                     panic!("comparison file `{path}` did not exist, so it was created");
                 }
@@ -89,27 +87,25 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
 #[test]
 fn serde_roundtrip() {
     let path = "examples/all_effects.conf";
-    let config: InputConfig<Universe> = deserialize_json_from_path(&path).unwrap();
+    let config: InputConfig<Universe> = read_json_from_file(&path).unwrap();
     let universe = config.universe;
 
     let tmp = serde_json::to_string(&universe).unwrap();
     let serde_universe: Universe = serde_json::from_str(&tmp).unwrap();
 
     assert_eq!(universe, serde_universe)
-
 }
 
 #[test]
 fn postcard_roundtrip() {
     let path = "examples/all_effects.conf";
-    let config: InputConfig<Universe> = deserialize_json_from_path(&path).unwrap();
+    let config: InputConfig<Universe> = read_json_from_file(&path).unwrap();
     let universe = config.universe;
 
     let tmp = postcard::to_stdvec(&universe).unwrap();
     let postcard_universe: Universe = postcard::from_bytes(&tmp).unwrap();
 
     assert_eq!(universe, postcard_universe)
-
 }
 
 #[test]
@@ -126,49 +122,14 @@ fn postcard_vs_serde() {
     assert_eq!(serde_universe, postcard_universe)
 }
 
-
-#[test]
-fn postcard_multiread() {
-    let path = "output/run_1/magnetic.postcard";
-    let data: Vec<Universe> = deserialize_postcard_from_path(&path).unwrap();
-    assert_eq!(data.len(), 25401);
-}
-
-#[test]
-fn postcard_size() {
-    let path = "output/run_1/magnetic.postcard";
-    let data: Vec<Universe> = deserialize_postcard_from_path(&path).unwrap();
-
-    let mut outfile = OutputBuilder::new(&"output/run_1/magnetic_loop")
-        .format(FileFormat::Postcard)
-        .compression(Compression::Snappy)
-        .build()
-        .unwrap();
-
-    let mut outfile2 = OutputBuilder::new(&"output/run_1/magnetic_all")
-        .format(FileFormat::Postcard)
-        .compression(Compression::Snappy)
-        .build()
-        .unwrap();
-
-    let mut v = vec![];
-    for d in &data {
-        outfile.write(&d).unwrap();
-        v.push(d);
-    }
-
-    outfile2.write(&v).unwrap();
-
-    assert!(data.len() != 0);
-}
-
 #[test]
 fn jsonl_multiread() {
     let path = "output/run_0/magnetic.jsonl";
-    let mut reader = create_buffered_file_reader(&path).unwrap();
-    let data: Vec<Universe> = reader.lines().map(|line|
-        serde_json::from_str(&line.unwrap()).unwrap()
-    ).collect();
+    let reader = create_buffered_file_reader(&path).unwrap();
+    let data: Vec<Universe> = reader
+        .lines()
+        .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
+        .collect();
     assert_eq!(data.len(), 25401);
 }
 

@@ -1,5 +1,4 @@
 use anyhow::Result;
-use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -22,41 +21,6 @@ pub struct Kaula {
     polynomials: Polynomials,
     #[serde(skip)]
     love_number: LoveNumber,
-}
-
-// Custom implmentation for Encode and Decode to ignore specific fields
-// i.e. don't encode the polynomials cache or love number cache
-// (equivalent of serde skip_serializing)
-impl Encode for Kaula {
-    fn encode<E: bincode::enc::Encoder>(
-        &self,
-        encoder: &mut E,
-    ) -> Result<(), bincode::error::EncodeError> {
-        Encode::encode(&self.particle_type, encoder)?;
-        Ok(())
-    }
-}
-
-impl<Context> Decode<Context> for Kaula {
-    fn decode<D: bincode::de::Decoder<Context = Context>>(
-        decoder: &mut D,
-    ) -> Result<Self, bincode::error::DecodeError> {
-        Ok(Self {
-            particle_type: Decode::decode(decoder)?,
-            ..Default::default()
-        })
-    }
-}
-
-impl<'de, Context> ::bincode::BorrowDecode<'de, Context> for Kaula {
-    fn borrow_decode<D: bincode::de::BorrowDecoder<'de, Context = Context>>(
-        decoder: &mut D,
-    ) -> Result<Self, bincode::error::DecodeError> {
-        Ok(Self {
-            particle_type: Decode::decode(decoder)?,
-            ..Default::default()
-        })
-    }
 }
 
 impl Kaula {

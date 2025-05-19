@@ -41,7 +41,7 @@ impl StarCsv {
         self.age *= SECONDS_IN_YEAR;
         self.radius *= SOLAR_RADIUS;
         self.mass *= SOLAR_MASS;
-        self.luminosity *= SOLAR_LUMINOSITY * 1e24;
+        self.luminosity *= SOLAR_LUMINOSITY;
         self.convective_radius *= SOLAR_RADIUS;
         self.convective_mass *= SOLAR_MASS;
         self.radiative_moment_of_inertia *= self.mass * self.radius.powi(2);

@@ -45,7 +45,7 @@ spiroid -b my_cases my_output
 python3 scripts/plotter.py my_output
 
 # Plot all simulations from "my_output" directory into comparison plots.
-python3 scripts/plotter.py my_output/run_*/*.jsonl my_output
+python3 scripts/plotter.py my_output/*/*.jsonl my_output
 ```
 
 ## Usage
@@ -91,17 +91,17 @@ For example:
 spiroid example.conf simulations
 ```
 will produce the following structure:
-(A `run_n` sub directory will be created for each simulation, with `n` as the smallest non pre-existing numerical suffix.)
+(A `-n` sub directory will be created for each simulation, with `n` as the smallest non pre-existing numerical suffix.)
 ```
 simulations/
 └── simulation.log
-└── run_0
+└── example
     ├── example.conf
     └── example.jsonl
 ```
 
 ### Analyse a simulation
-The output data is available in `/output/run_n/simulation_name.jsonl`
+The output data is available in `/output/simulation_name/simulation_name.jsonl`
 
 #### Plotting
 A simple plotting script is provided to view output quantities over time.
@@ -112,12 +112,12 @@ To create merged plots to compare output from one or more simulations:
 
 With input parameters:
 
-- `input_data*`: Path(s) to spiroid output file(s). (e.g. `/path/to/simulations/run_0/example.jsonl`).
+- `input_data*`: Path(s) to spiroid output file(s). (e.g. `/path/to/simulations/simulation_name/simulation_name.jsonl`).
 - `output_directory`: Path to the desired output destination. Will be automatically created if it does not already exist.
 
 Example:
 
-`python3 scripts/plotter.py simulation/run_0/*.jsonl simulation/run_1/*.jsonl plots`
+`python3 scripts/plotter.py simulation/{simulation_name,other_simulation_name}/*.jsonl plots`
 
 Will create merged plots for each quantity inside the `plots` directory.
 
@@ -131,7 +131,7 @@ With input parameters:
 Example: 
 `python3 scripts/plotter.py simulations`
 
-Will create plots for all quantities inside the respective `simulations/run_n/` directories.
+Will create plots for all quantities inside the respective `simulations/simulation_name/` directories.
 
 > Note: Be mindful when plotting large simulations, or a large number of simulations, as python is slow.
  
@@ -155,8 +155,8 @@ The format of the file must be CSV (Comma Separated Values) with the following h
 - `mass` (solar mass)
 - `convective_radius` (solar radius)
 - `convective_mass` (solar mass)
-- `radiative_moment_of_inertia`
-- `convective_moment_of_inertia`
+- `radiative_moment_of_inertia`  (stellar mass * stellar radius^2)
+- `convective_moment_of_inertia` (stellar mass * stellar radius^2)
 - `luminosity` (solar luminosity)
 
 ### Magnetism (`Particle`)

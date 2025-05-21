@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rayon::prelude::*;
 use sci_file::{read_csv_columns_from_file, read_csv_rows_from_dir, read_csv_rows_from_file};
-use spiroid_lib::{ParticleType, Simulation, StarCsv, Universe, constants::SECONDS_IN_YEAR};
+use spiroid_lib::{ParticleType, Simulation, StarCsv, Universe};
 
 fn main() -> Result<()> {
     let simulations = Simulation::<Universe>::new()?;

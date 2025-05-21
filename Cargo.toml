@@ -1,6 +1,6 @@
 [package]
 name = "spiroid"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 authors = ["Tim"]
 description = "Star Planet Interaction Rotational and Orbital Integrator for Dynamics."
@@ -16,21 +16,20 @@ name = "spiroid"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1.0.97"
-log = "0.4.26"
+anyhow = "1.0.98"
+log = "0.4.27"
 rayon = "1.10.0"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140", features = ["float_roundtrip"] }
 astro-const = { git = "https://github.com/DynaClim/astro-const.git" }
 math-macros = { git = "https://github.com/DynaClim/math-macros.git" }
-sci-file = { path = "../sci-file"}
-simulation = { path = "../simulation"}
-bincode = "2.0.1"
+sci-file = { git = "https://github.com/DynaClim/sci-file.git" }
+simulation = { git = "https://github.com/DynaClim/simulation.git" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 assert_approx_eq = "1.1.0"
 postcard = { version = "1.1.1", default-features = false, features = ["use-std"] }
+serde_json = { version = "1.0.140", features = ["float_roundtrip"] }
 
 [lints.rust]
 unsafe_code = "forbid"

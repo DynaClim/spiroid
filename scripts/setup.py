@@ -127,10 +127,24 @@ def star_setup(effects):
     return star_base
 
 
+
 def integrator_setup():
     ##############################################################
     #################### INTEGRATOR SETUP ########################
     ##############################################################
+
+    # Output filtered each timestep that occurs greater than `absolute_tolerance`
+    # or if the percentage difference between two timesteps exceeds `relative_tolerance`,
+    # in which case the `relative_tolerance` is increased by the additive `scaling_factor`
+    # Used to simulate logscale output.
+    filter = {
+        "Filtered": {
+            "absolute_tolerance": SECONDS_IN_YEAR * 1e6,
+            "relative_tolerance": 1.15,
+            "incremental_scaling_factor": 0.002,
+            "decremental_scaling_factor": 0.0
+        }
+    }
 
     odex = {
         "Odex": {
@@ -138,6 +152,9 @@ def integrator_setup():
             "step_size_selection_b": 2.0,
             "step_size_max": SECONDS_IN_YEAR * 5e5,
             "max_integration_steps": 100000000,
+            # Uncomment the entire solution_output for Dense output
+            "solution_output": filter,
+
         }
     }
 
@@ -168,11 +185,8 @@ def integrator_setup():
             "step_size_underflow": None,
             "stiffness_test": "Disabled",
             "max_integration_steps": 100000000,
-            "solution_output": {
-                "Dense": {
-                    "increment": SECONDS_IN_YEAR * 1e6,
-                }
-            },
+            # Uncomment the entire solution_output for Dense output
+            "solution_output": filter,
         }
     }
 
@@ -180,6 +194,7 @@ def integrator_setup():
     return odex
 #    return odex_kaula
 #    return dopri853
+
 
 if __name__ == "__main__":
     make_configs(

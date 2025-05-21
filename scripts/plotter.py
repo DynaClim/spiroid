@@ -31,6 +31,10 @@ sys.dont_write_bytecode = True
 
 import glob
 import json
+try:
+    import lz4tools
+except ImportError:
+    pass
 import matplotlib
 
 matplotlib.use("Agg")
@@ -49,35 +53,40 @@ from units import (
 
 
 def parse_values(file_path):
+    print(f"reading data file: {file_path})")
+    if file_path.endswith(".jsonl.lz4"):
+        data = lz4tools.open(file_path).read().split(b'\n')
+        return parse_jsonl(data)
     if file_path.endswith(".jsonl"):
-        return parse_jsonl(file_path)
+        with open(file_path, "r") as data:
+            return parse_jsonl(data)
     else:
         return parse_values_lines(file_path)
 
 
-def parse_jsonl(file_path):
+def parse_jsonl(data):
     """Reads a JSONL file and combines all entries into a single dictionary."""
     dict = {}
 
     # Replace booleans with 0/1 so they can be plotted.
     lookup = {False: 0, True: 1}
 
-    with open(file_path, "r") as file:
-        for line in file:
-            data = json.loads(line)
-            data = flatten(data)
-            # Update the combined dictionary with the current JSON object
-            for key, value in data.items():
-                key = sanitise_key(key)
-                value = lookup.get(value, value)
+    for line in data:
+        data = json.loads(line)
+        data = flatten(data)
+        # Update the combined dictionary with the current JSON object
+        for key, value in data.items():
+            key = sanitise_key(key)
+            value = lookup.get(value, value)
 
-                # Convert units for specific values.
-                value = convert_units(key, value)
+            # Convert units for specific values.
+            value = convert_units(key, value)
 
-                if key in dict:
-                    dict[key].append(value)
-                else:
-                    dict[key] = [value]
+
+            if key in dict:
+                dict[key].append(value)
+            else:
+                dict[key] = [value]
     return dict
 
 
@@ -189,7 +198,7 @@ def main():
     elif len(sys.argv) == 2:
         output_path = None
         path = sys.argv[1]
-        all_files = glob.glob(f"{path}/**/*.jsonl", recursive=True)
+        all_files = glob.glob(f"{path}/**/*.jsonl*", recursive=True)
     else:
         output_path = sys.argv.pop()
         # Create the output directory path if it doesn't already exist.
@@ -226,10 +235,6 @@ def main():
             print(f"processing file: {output_path}")
             # Remove unwanted keys (keys specified as unworth for plotting).
             all_keys = filter_keys(all_keys)
-            for y_label in all_keys:
-                print(f"Making graph: {y_label}")
-                subplots = create_subplots(x_label, [y_label], data)
-                create_plots(x_label, y_label, subplots, output_path)
             # Create a merged plot for all grouped quantities for each data file.
             for y_label, key_set in partition_keys(all_keys).items():
                 if len(key_set) == 1:

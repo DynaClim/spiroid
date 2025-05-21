@@ -2,22 +2,17 @@ use super::*;
 use postcard;
 use pretty_assertions::assert_eq;
 use sci_file::{
-    OutputWriter, create_buffered_file_reader, read_csv_columns_from_file, read_csv_rows_from_file,
-    read_json_from_file,
+    OutputWriter, read_csv_columns_from_file, read_csv_rows_from_file, read_json_from_file,
 };
 use simulation::Integrator;
 use simulation::simulation::InputConfig;
-use std::io::BufRead;
 use std::path::{Path, PathBuf};
 
 fn test_simulation(config: PathBuf) -> Universe {
     // Parse the config file.
     let mut config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
-    config.initial_time *= SECONDS_IN_YEAR;
-    config.final_time *= SECONDS_IN_YEAR;
-
     // Load stellar evolution data from file.
-    if let ParticleType::Star(star) = &mut config.universe.central_body.kind {
+    if let ParticleType::Star(star) = &mut config.system.central_body.kind {
         // Load stellar evolution data from file if stellar evolution is enabled.
         if let Some(star_file) = star.evolution_file() {
             let mut stellar_data = read_csv_rows_from_file::<StarCsv>(star_file).unwrap();
@@ -28,7 +23,7 @@ fn test_simulation(config: PathBuf) -> Universe {
     }
 
     // Load love number data from file(s) if kaula tides are enabled.
-    if let Some(kaula) = config.universe.orbiting_body.tides.kaula_get_mut() {
+    if let Some(kaula) = config.system.orbiting_body.tides.kaula_get_mut() {
         if let Some(solid_file) = kaula.solid_file() {
             let love_solid = read_csv_columns_from_file::<f64>(solid_file).unwrap();
             kaula.initialise_love_number_solid(&love_solid);
@@ -40,18 +35,18 @@ fn test_simulation(config: PathBuf) -> Universe {
     }
 
     // Initialise the universe (star, planet, etc).
-    config.universe.initialise(config.initial_time).unwrap();
+    config.system.initialise(config.initial_time).unwrap();
 
     // Initial values for the integrator.
-    let y = config.universe.integration_quantities();
+    let y = config.system.integration_quantities();
     config
         .integrator
         .initialise(config.initial_time, config.final_time, &y);
 
     // Run the full integration.
-    let _ = config.integrator.integrate(&mut config.universe).unwrap();
+    let _ = config.integrator.integrate(&mut config.system).unwrap();
 
-    config.universe
+    config.system
 }
 
 fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Universe) {
@@ -88,7 +83,7 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
 fn serde_roundtrip() {
     let path = "examples/all_effects.conf";
     let config: InputConfig<Universe> = read_json_from_file(&path).unwrap();
-    let universe = config.universe;
+    let universe = config.system;
 
     let tmp = serde_json::to_string(&universe).unwrap();
     let serde_universe: Universe = serde_json::from_str(&tmp).unwrap();
@@ -100,7 +95,7 @@ fn serde_roundtrip() {
 fn postcard_roundtrip() {
     let path = "examples/all_effects.conf";
     let config: InputConfig<Universe> = read_json_from_file(&path).unwrap();
-    let universe = config.universe;
+    let universe = config.system;
 
     let tmp = postcard::to_stdvec(&universe).unwrap();
     let postcard_universe: Universe = postcard::from_bytes(&tmp).unwrap();
@@ -120,17 +115,6 @@ fn postcard_vs_serde() {
     let postcard_universe: Universe = postcard::from_bytes(&tmp).unwrap();
 
     assert_eq!(serde_universe, postcard_universe)
-}
-
-#[test]
-fn jsonl_multiread() {
-    let path = "output/run_0/magnetic.jsonl";
-    let reader = create_buffered_file_reader(&path).unwrap();
-    let data: Vec<Universe> = reader
-        .lines()
-        .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
-        .collect();
-    assert_eq!(data.len(), 25401);
 }
 
 #[test]

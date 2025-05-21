@@ -32,6 +32,15 @@ impl MagneticModel {
     }
 }
 
+// Flag indicating the nature of the magnetic interaction
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, Clone)]
+pub enum MagneticInteraction {
+    #[default]
+    None,
+    Unipolar,
+    Dipolar,
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, Clone)]
 #[serde(default)]
 // Computation of a 1D magnetized isothermal wind to quantify angular momentum exchange in Star-Planet Magnetic Interactions
@@ -50,6 +59,8 @@ pub struct IsothermalWind {
     alfvenic_mach: f64,                 // ()
     azimuthal_velocity: f64,            // (cm.s-1)
     alfven_speed_at_alfven_radius: f64, // (cm.s-1)
+
+    interaction: MagneticInteraction, // Nature of the magnetic interaction (unipolar or dipolar)
 }
 
 impl IsothermalWind {
@@ -452,6 +463,14 @@ impl IsothermalWind {
         // If lambda <= 1., Unipolar interaction, without magnetosphere.
         // Otherwise, Dipolar interaction, with magnetosphere.
         let lambda = planet.magnetic_pressure / self.magnetic_pressure;
+
+        self.interaction = if lambda <= 1. {
+            // Unipolar interaction,  without magnetosphere
+            MagneticInteraction::Unipolar
+        } else {
+            // Dipolar interaction,  with magnetosphere
+            MagneticInteraction::Dipolar
+        };
 
         // Unipolar torque
         let torque_unipolar = 8.

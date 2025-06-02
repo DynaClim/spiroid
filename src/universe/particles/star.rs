@@ -474,22 +474,6 @@ impl Star {
         sqrt!(abs!(self.wind_torque) / (self.mass_loss_rate * abs!(self.spin)))
     }
 
-    // This is a re-write of Eq. 3 and 19 from Benbakoura et al. 2019
-    // without the factors that are in the function semi_major_axis_13_div_2_derivative in physics.rs
-    // The a^-6 is here to compensate the a^6 in physics.rs
-    pub fn tidal_torque_ctl(&self, sigma_bar_star: f64, planet: &Planet) -> f64 {
-        let tidal_quality = self.tidal_quality(sigma_bar_star);
-        // Smoothing parameter when tidal frequency is 0
-        let depth = 1E-08;
-        -(9. / 4.)
-            * planet.mass.powi(2)
-            * GRAVITATIONAL
-            * planet.semi_major_axis.powi(-6)
-            * tanh!(self.tidal_frequency / depth)
-            * self.radius.powi(5)
-            / tidal_quality
-    }
-
     // Calculates the equivalent tidal quality factor as in Mathis 2015 and Bolmont & Mathis 2016.
     pub fn tidal_quality(&self, sigma_bar_star: f64) -> f64 {
         // Epsilon to ensure that equilibrium_tide_quality_factors stays finite

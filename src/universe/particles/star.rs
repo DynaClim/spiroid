@@ -65,7 +65,7 @@ pub struct Star {
     pub(crate) luminosity: f64, // solar units
 
     // Calculated internally
-    dynamical_tide_dissipation: f64,
+    pub(crate) dynamical_tide_dissipation: f64,
     convective_turnover_time: f64,
     convective_turnover_time_sun: f64,
     pub(crate) angular_momentum_redistribution: f64,

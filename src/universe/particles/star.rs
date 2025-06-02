@@ -242,6 +242,12 @@ impl Star {
         self.rossby = self.rossby(); // requires convective_turnover_time, spin
         self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
 
+        if matches!(self.evolution, Evolution::Mesa { .. }) {
+            // Gallet & Delorme 2019, Eq. 18.
+            self.core_envelope_coupling_constant = 74.6e6 * SECONDS_IN_YEAR * (self.mass / SOLAR_MASS).powf(-3.83)
+                        * (abs!(self.spin) / SOLAR_ANGULAR_VELOCITY).powf(-0.69);
+        }
+
         // Zero the torques. They will be calculated if associated effects are enabled.
         self.tidal_torque_convective = 0.0;
         self.magnetic_torque = 0.0;
@@ -397,7 +403,17 @@ impl Star {
     // Benbakoura et al. 2019, Eq 2.
     fn mass_transfer_envelope_to_core_torque(&self) -> f64 {
         // Takes into account the structural evolution of the star and the torques applied on both radiative and convective zones.
-        (2. / 3.) * self.convective_radius.powi(2) * self.spin * self.radiative_mass_derivative
+        if self.radiative_mass_derivative >= 0.0 {
+            // If the radiative mass is increasing, the rotation of the convective zone is transferred to the radiative zone.
+            (2. / 3.) * self.convective_radius.powi(2) * self.spin * self.radiative_mass_derivative
+        } else {
+            if self.radiative_zone_angular_momentum == 0.0 || self.radiative_moment_of_inertia == 0.0 {
+                0.0
+            } else {
+                let minspin = min!(self.spin, self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia);
+                (2. / 3.) * self.convective_radius.powi(2) * minspin * self.radiative_mass_derivative
+            }
+        }
     }
 
     // Computes the Rossby number.

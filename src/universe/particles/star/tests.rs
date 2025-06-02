@@ -194,7 +194,7 @@ fn _tidal_torque_enabled() {
     let mut star = test_star();
     let planet = test_planet();
     star.refresh_tidal_frequency(&planet);
-    let tides = TidalModel::ConstantTimeLag(1e-6);
+    let tides = TidalModel::ConstantTimeLag { sigma_bar_star: 1e-6 };
     let result = tides.tidal_torque(&star, &planet);
     assert_eq!(expected, result);
 }
@@ -202,11 +202,11 @@ fn _tidal_torque_enabled() {
 #[test]
 // This function is only called if tides are enabled.
 fn _tidal_quality() {
-    let equilibrium_tide_dissipation: f64 = 1e-6;
+    let sigma_bar_star: f64 = 1e-6;
     let expected = 8678226.112383543;
     let mut star = test_star();
     let planet = test_planet();
     star.refresh_tidal_frequency(&planet);
-    let result = star.tidal_quality(equilibrium_tide_dissipation);
+    let result = star.tidal_quality(sigma_bar_star);
     assert_eq!(expected, result);
 }

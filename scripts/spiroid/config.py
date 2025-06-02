@@ -98,7 +98,7 @@ def make_stars(star_base, effects):
         }
 
         if effects["STAR_TIDES_ENABLED"]:
-            body["tides"] = {"ConstantTimeLag": sigma_bar}
+            body["tides"] = {"ConstantTimeLag": {"sigma_bar_star": sigma_bar}}
 
         if effects["MAGNETIC_EFFECT_ENABLED"]:
             body["magnetism"] = {"Wind": {"footpoint_conductance": footpoint_conductance}}

@@ -12,7 +12,9 @@ pub enum TidalModel {
     #[default]
     Disabled,
     // Equilibrium tide dissipation given as the dimensionless sigma_bar_star from Bolmont & Mathis (2016), Eq. 8
-    ConstantTimeLag(f64),
+    ConstantTimeLag{
+        sigma_bar_star: f64, // dimensionless sigma_bar_star
+    },
     KaulaTides {
         kaula: Kaula,
     },
@@ -22,9 +24,9 @@ impl TidalModel {
     pub(crate) fn tidal_torque(&self, star: &Star, planet: &Planet) -> f64 {
         match self {
             TidalModel::Disabled => 0.0,
-            TidalModel::ConstantTimeLag(equilibrium_tide_dissipation) => {
+            TidalModel::ConstantTimeLag { sigma_bar_star } => {
                 // requires tidal_frequency
-                star.tidal_torque_ctl(*equilibrium_tide_dissipation, planet)
+                star.tidal_torque_ctl(*sigma_bar_star, planet)
             }
             TidalModel::KaulaTides { .. } => todo!(),
         }

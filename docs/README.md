@@ -190,7 +190,7 @@ Tides for each particle can be toggled independently into the following states:
 > Note: Currently CTL is not implemented for the Planet, and Kaula is not implemented for the Star.
 
 #### Constant Time Lag (star)
-Set the `tides` property of the `central_body` particle to `ConstantTimeLag` and provide the `equilibrium_tide_dissipation` factor. 
+Set the `tides` property of the `central_body` particle to `ConstantTimeLag` and provide the `sigma_bar_star` factor. 
 
 #### Kaula tides (planet)
 Set the `tides` property of the `orbiting_body` particle to `KaulaTides`, specify the `particle_type` (e.g. `Solid`) and provide the appropriate love number data file.

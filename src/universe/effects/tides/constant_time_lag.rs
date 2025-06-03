@@ -20,8 +20,8 @@ impl ConstantTimeLag {
     // The a^-6 is here to compensate the a^6 in physics.rs
     pub fn tidal_torque(&self, star: &Star, planet: &Planet) -> f64 {
 
-        let total_dissipiation = 1. / self.equilibrium.tidal_quality(star)
-            + 1. / self.inertial.tidal_quality(star);
+        let total_dissipiation = 1. / self.equilibrium.tidal_quality(star, planet)
+            + 1. / self.inertial.tidal_quality(star, planet);
 
         let tidal_quality = 1. / total_dissipiation;
         // Smoothing parameter when tidal frequency is 0

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::universe::particles::Star;
+use crate::universe::particles::{Star, Planet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub enum Inertial {
@@ -10,9 +10,9 @@ pub enum Inertial {
 }
 
 impl Inertial {
-    pub fn tidal_quality(&self, star: &Star) -> f64 {
+    pub fn tidal_quality(&self, star: &Star, _planet: &Planet) -> f64 {
         match self {
-            Inertial::Disabled => 0.0,
+            Inertial::Disabled => f64::INFINITY,
             Inertial::FrequencyAveraged => {
                 self.tidal_quality_frequency_averaged(star)
             }

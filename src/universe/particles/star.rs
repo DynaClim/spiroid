@@ -57,7 +57,7 @@ pub struct Star {
     age: f64,               // (s)
     pub(crate) radius: f64, // (m)
     convective_radius: f64, // (m)
-    radiative_mass: f64,    // (kg)
+    pub(crate) radiative_mass: f64,    // (kg)
     pub(crate) convective_moment_of_inertia_derivative: f64,
     pub(crate) convective_moment_of_inertia: f64, // (kg.m2)
     pub(crate) radiative_moment_of_inertia: f64,  // (kg.m2)
@@ -66,7 +66,7 @@ pub struct Star {
 
     // Calculated internally
     pub(crate) dynamical_tide_dissipation: f64,
-    convective_turnover_time: f64,
+    pub(crate) convective_turnover_time: f64,
     convective_turnover_time_sun: f64,
     pub(crate) angular_momentum_redistribution: f64,
     pub(crate) mass_transfer_envelope_to_core_torque: f64, // structural evolution

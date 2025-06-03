@@ -42,3 +42,8 @@ impl Inertial {
         dynamical_tide_quality_factors
     }
 }
+
+
+// References:
+// Mathis 2015, https://doi.org/10.1051/0004-6361/201526472
+// Bolmont & Mathis 2016, https://doi.org/10.1007/s10569-016-9690-3

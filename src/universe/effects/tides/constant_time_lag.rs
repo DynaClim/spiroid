@@ -35,3 +35,6 @@ impl ConstantTimeLag {
             / tidal_quality
     }
 }
+
+// References:
+// Benbakoura et al. 2019, https://doi.org/10.1051/0004-6361/201833314

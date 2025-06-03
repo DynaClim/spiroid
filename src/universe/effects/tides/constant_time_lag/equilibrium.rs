@@ -51,6 +51,7 @@ impl Equilibrium {
         equilibrium_tide_quality_factors
     }
 
+    // Equilibrium tide with Zahn prescription following the parametrisation of equation 1 in Mustill & Villaver (2012)
     pub fn tidal_quality_zahn(&self, star: &Star, planet: &Planet, f_prime: f64, c_f: f64, gamma_f: f64) -> f64 {
         let f2 = f_prime * min!(1_f64, ((2. * PI) / (2. * planet.mean_motion * c_f * star.convective_turnover_time)).powf(gamma_f));
         let k2 = 1. / 27.
@@ -64,3 +65,8 @@ impl Equilibrium {
         3. / 2. / k2
     }
 }
+
+// References:
+// Bolmont & Mathis 2016, https://doi.org/10.1007/s10569-016-9690-3
+// Benbakoura et al. 2019, https://doi.org/10.1051/0004-6361/201833314
+// Mustill & Villaver 2012, http://doi.org/10.1088/0004-637X/761/2/121

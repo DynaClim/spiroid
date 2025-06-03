@@ -81,6 +81,7 @@ pub struct Star {
     pub(crate) magnetic_torque: f64,
     pub(crate) tidal_torque: f64,
     pub(crate) evolved_wind_torque: f64,
+    pub(crate) evolved_wind_orbit_torque: f64,
     // Additional mass loss rate during the evolved phase of the star.
     evolved_mass_loss_rate: f64, // (kg.s-1)
 
@@ -267,6 +268,12 @@ impl Star {
             // alfven_radius is recalculated with the updated wind_torque
             self.alfven_radius = self.alfven_radius_estimate(); // requires mass_loss_rate, wind_torque
             self.evolved_wind_torque = self.evolved_wind_torque(); // requires spin, evolved_mass_loss_rate, radius
+        }
+    }
+
+    pub(crate) fn update_evolved_wind_orbit_torque(&mut self, enabled: bool, planet: &Planet) {
+        if enabled {
+            self.evolved_wind_orbit_torque = planet.semi_major_axis * self.evolved_mass_loss_rate / (self.mass + planet.mass); // requires mass, radius
         }
     }
 

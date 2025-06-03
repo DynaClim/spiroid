@@ -87,10 +87,11 @@ fn star_radiative_zone_angular_momentum_derivative(star: &Star) -> f64 {
 // this means that what we call here the tidal torque is not exactly the tidal torque, but the tidal torque * a^6
 // or tidal torque without the semi-major axis dependency
 pub(crate) fn planet_semi_major_axis_13_div_2_derivative(planet: &Planet, star: &Star) -> f64 {
-    -13. * sqrt!((star.mass + planet.mass) / GRAVITATIONAL)
+    - 13. * sqrt!((star.mass + planet.mass) / GRAVITATIONAL)
         * (1. / (star.mass * planet.mass))
         * planet.semi_major_axis.powi(6)
-        * (star.magnetic_torque + star.tidal_torque)
+        * (star.magnetic_torque + star.tidal_torque_convective)
+    + 13. / 2. * planet.semi_major_axis.powf(11. / 2.) * star.evolved_wind_orbit_torque
 }
 
 // Semi-major axis derivative.

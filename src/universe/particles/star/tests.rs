@@ -206,15 +206,3 @@ fn _tidal_torque_enabled() {
     let result = tides.tidal_torque(&star, &planet);
     assert_eq!(expected, result);
 }
-
-#[test]
-// This function is only called if tides are enabled.
-fn _tidal_quality() {
-    let sigma_bar_star: f64 = 1e-6;
-    let expected = 8678226.112383543;
-    let mut star = test_star();
-    let planet = test_planet();
-    star.refresh_tidal_frequency(&planet);
-    let result = star.tidal_quality(sigma_bar_star);
-    assert_eq!(expected, result);
-}

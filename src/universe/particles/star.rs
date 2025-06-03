@@ -474,46 +474,6 @@ impl Star {
         sqrt!(abs!(self.wind_torque) / (self.mass_loss_rate * abs!(self.spin)))
     }
 
-    // Calculates the equivalent tidal quality factor as in Mathis 2015 and Bolmont & Mathis 2016.
-    pub fn tidal_quality(&self, sigma_bar_star: f64) -> f64 {
-        // Epsilon to ensure that equilibrium_tide_quality_factors stays finite
-        let epsilon_secure = 1.0E-10;
-        // Epsilon to ensure a smooth transition equilibrium / dynamical tide
-        let epsilon_step = 1.0E-06;
-
-        // Equilibrium tide
-        // Normalization constant for equilibrium tide (Bolmont & Mathis,  2016,  Eq. 8)
-        let normalisation_constant = sqrt!(GRAVITATIONAL / (SOLAR_MASS * SOLAR_RADIUS.powi(7)));
-        // Tidal quality factors for the equilibrium tide
-        // This is Eq. 22 of Benbakoura et al. 2019
-        let equilibrium_tide_quality_factors = GRAVITATIONAL
-            / (abs!(self.tidal_frequency + epsilon_secure)
-                * sigma_bar_star
-                * normalisation_constant
-                * self.radius.powi(5));
-
-        // Dynamical tide
-        // Equivalent Q' factor, tidal quality factor
-        // This is the inverse of Eq. 4 of Bolmont & Mathis 2016,
-        // which give the tidal quality factor Q' as a function of <D>w
-        // (Eq. 1 of Mathis 2015, or Bolmont & Mathis 2016)
-        // But here, keep in mind that the spin was removed out of <D>w to be then multiplied here
-        // Q' = 3 / ( 2 * <D>w ) | Bolmont & Mathis
-        // Q' = 3 / ( 2 * <D>w' * spin^2 ) | here
-        let dynamical_tide_quality_factors =
-            3. / (2. * self.dynamical_tide_dissipation * self.spin.powi(2));
-
-        // Total dissipation
-        // The multiplicative factor after dynamical_tide_quality_factors allows to pass continuously above 0 when inertia waves are raised
-        // Benbakoura et al. 2019 Eq. 20
-        let total_dissipiation = 1. / equilibrium_tide_quality_factors
-            + (1. / dynamical_tide_quality_factors)
-                * 0.5
-                * (1. + tanh!((self.tidal_frequency + 2. * self.spin) / epsilon_step));
-
-        1. / total_dissipiation
-    }
-
     // Ardestani et al. 2017 Eq. A1
     fn convective_turnover_time(adjusted_convective_mass: f64) -> f64 {
         10_f64.powf(

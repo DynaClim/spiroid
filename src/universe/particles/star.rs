@@ -79,11 +79,16 @@ pub struct Star {
     tidal_quality: f64,
     pub(crate) tidal_frequency: f64,
     pub(crate) magnetic_torque: f64,
-    pub(crate) tidal_torque: f64,
+    pub(crate) tidal_torque_convective: f64,
+
+    // Evolved parameters
     pub(crate) evolved_wind_torque: f64,
     pub(crate) evolved_wind_orbit_torque: f64,
     // Additional mass loss rate during the evolved phase of the star.
     evolved_mass_loss_rate: f64, // (kg.s-1)
+    therminal_wind_speed: f64, // (m.s-1)
+    mass_accretion_efficiency: f64,
+    wind_orbital_angular_momentum_loss: f64,
 
     // Integration parameters
     pub(crate) convective_zone_angular_momentum: f64, // (kg.m^2.s-1)
@@ -273,8 +278,25 @@ impl Star {
 
     pub(crate) fn update_evolved_wind_orbit_torque(&mut self, enabled: bool, planet: &Planet) {
         if enabled {
-            self.evolved_wind_orbit_torque = planet.semi_major_axis * self.evolved_mass_loss_rate / (self.mass + planet.mass); // requires mass, radius
+            self.evolved_wind_orbit_torque = self.evolved_wind_orbit_torque(planet); // requires mass, radius, planet mass, semi_major_axis, mean_motion
         }
+    }
+
+    fn evolved_wind_orbit_torque(&mut self, planet: &Planet) -> f64 {
+            let alpha_wind = 1./8.; // Esseldeurs et al. 2025, below Eq. 25
+            self.therminal_wind_speed = sqrt!(2. * alpha_wind * GRAVITATIONAL * self.mass / self.radius); // requires mass, radius; Esseldeurs et al. 2025, Eq. 25
+            let orbital_velocity = planet.mean_motion * planet.semi_major_axis; // requires semi_major_axis, mean_motion
+            let mass_ratio = planet.mass / self.mass; // requires mass, planet mass; Esseldeurs et al. 2025, below Eq. 18
+            self.mass_accretion_efficiency = mass_ratio.powi(2) / (1. + mass_ratio.powi(2))
+                                             * orbital_velocity.powi(4)
+                                             / (self.therminal_wind_speed * (self.therminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5)); // requires therminal_wind_speed, orbital_velocity, planet mass; Esseldeurs et al. 2025, Eq. 21
+            self.wind_orbital_angular_momentum_loss = mass_ratio.powi(2) / (1. + mass_ratio.powi(2)); // Esseldeurs et al. 2025, below Eq. 22
+
+            2. * planet.semi_major_axis * self.evolved_mass_loss_rate / self.mass * (
+                                             1. - self.mass_accretion_efficiency / mass_ratio
+                                             - self.wind_orbital_angular_momentum_loss * (1. - self.mass_accretion_efficiency)  * (1. + mass_ratio) / mass_ratio
+                                             - (1. - self.mass_accretion_efficiency) / 2. / (1. + mass_ratio) 
+            ) // Esseldeurs et al. 2025, Eq. 20
     }
 
     fn dynamical_tide_dissipation(&self) -> f64 {

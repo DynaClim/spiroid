@@ -283,20 +283,41 @@ impl Star {
     }
 
     fn evolved_wind_orbit_torque(&mut self, planet: &Planet) -> f64 {
-            let alpha_wind = 1./8.; // Esseldeurs et al. 2025, below Eq. 25
-            self.therminal_wind_speed = sqrt!(2. * alpha_wind * GRAVITATIONAL * self.mass / self.radius); // requires mass, radius; Esseldeurs et al. 2025, Eq. 25
+            self.therminal_wind_speed = self.therminal_wind_speed(); // requires mass, radius
             let orbital_velocity = planet.mean_motion * planet.semi_major_axis; // requires semi_major_axis, mean_motion
             let mass_ratio = planet.mass / self.mass; // requires mass, planet mass; Esseldeurs et al. 2025, below Eq. 18
-            self.mass_accretion_efficiency = mass_ratio.powi(2) / (1. + mass_ratio.powi(2))
-                                             * orbital_velocity.powi(4)
-                                             / (self.therminal_wind_speed * (self.therminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5)); // requires therminal_wind_speed, orbital_velocity, planet mass; Esseldeurs et al. 2025, Eq. 21
-            self.wind_orbital_angular_momentum_loss = mass_ratio.powi(2) / (1. + mass_ratio.powi(2)); // Esseldeurs et al. 2025, below Eq. 22
+            self.mass_accretion_efficiency = self.mass_accretion_efficiency(mass_ratio, self.therminal_wind_speed, orbital_velocity); // requires therminal_wind_speed, orbital_velocity, mass_ratio
+            self.wind_orbital_angular_momentum_loss = self.wind_orbital_angular_momentum_loss(mass_ratio, self.therminal_wind_speed, orbital_velocity); // requires therminal_wind_speed, orbital_velocity, mass_ratio
 
             2. * planet.semi_major_axis * self.evolved_mass_loss_rate / self.mass * (
                                              1. - self.mass_accretion_efficiency / mass_ratio
                                              - self.wind_orbital_angular_momentum_loss * (1. - self.mass_accretion_efficiency)  * (1. + mass_ratio) / mass_ratio
                                              - (1. - self.mass_accretion_efficiency) / 2. / (1. + mass_ratio) 
             ) // Esseldeurs et al. 2025, Eq. 20
+    }
+
+    // Computes the terminal wind speed.
+    // This is the speed at which the stellar wind reaches its maximum velocity.
+    // Esseldeurs et al. 2025, Eq. 25
+    fn therminal_wind_speed(&self) -> f64 {
+        let alpha_wind = 1./8.; // Esseldeurs et al. 2025, below Eq. 25
+        sqrt!(2. * alpha_wind * GRAVITATIONAL * self.mass / self.radius)
+    }
+
+    // Computes the mass accretion efficiency.
+    // This is the fraction of the stellar wind that is accreted by the planet.
+    // Esseldeurs et al. 2025, below Eq. 21
+    fn mass_accretion_efficiency(&self, mass_ratio: f64, therminal_wind_speed: f64, orbital_velocity: f64) -> f64 {
+        mass_ratio.powi(2) / (1. + mass_ratio.powi(2))
+            * orbital_velocity.powi(4)
+            / (therminal_wind_speed * (therminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5))
+    }
+
+    // Computes the wind orbital angular momentum loss.
+    // This is the fraction of the orbital angular momentum that is lost due to the stellar wind.
+    // Esseldeurs et al. 2025, below Eq. 22
+    fn wind_orbital_angular_momentum_loss(&self, mass_ratio: f64, therminal_wind_speed: f64, orbital_velocity: f64) -> f64 {
+        mass_ratio.powi(2) / (1. + mass_ratio.powi(2))
     }
 
     fn dynamical_tide_dissipation(&self) -> f64 {

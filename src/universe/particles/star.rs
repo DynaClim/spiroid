@@ -298,26 +298,34 @@ impl Star {
 
     // Computes the terminal wind speed.
     // This is the speed at which the stellar wind reaches its maximum velocity.
-    // Esseldeurs et al. 2025, Eq. 25
+    // Esseldeurs et al. 2025, Eq. 22
     fn therminal_wind_speed(&self) -> f64 {
-        let alpha_wind = 1./8.; // Esseldeurs et al. 2025, below Eq. 25
+        let alpha_wind = 1./8.; // Esseldeurs et al. 2025, below Eq. 22
         sqrt!(2. * alpha_wind * GRAVITATIONAL * self.mass / self.radius)
     }
 
     // Computes the mass accretion efficiency.
     // This is the fraction of the stellar wind that is accreted by the planet.
-    // Esseldeurs et al. 2025, below Eq. 21
+    // Esseldeurs et al. 2025, Eq. 20, based on Saladino et al. 2019
     fn mass_accretion_efficiency(&self, mass_ratio: f64, therminal_wind_speed: f64, orbital_velocity: f64) -> f64 {
-        mass_ratio.powi(2) / (1. + mass_ratio.powi(2))
+        let mass_accretion_efficiency_bhl = mass_ratio.powi(2) / (1. + mass_ratio).powi(2)
             * orbital_velocity.powi(4)
-            / (therminal_wind_speed * (therminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5))
+            / (therminal_wind_speed * (therminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5));
+        let mass_accretion_efficiency = (0.75 + 1.0 / 
+            (1.7 + 0.3 /  mass_ratio + ((0.5 + 0.2 /  mass_ratio) * therminal_wind_speed / orbital_velocity).powi(5))
+        ) * mass_accretion_efficiency_bhl; // Esseldeurs et al. 2025, below Eq. 20
+        min!(mass_accretion_efficiency, 0.3_f64, 1.4*mass_ratio.powi(2))
     }
 
     // Computes the wind orbital angular momentum loss.
     // This is the fraction of the orbital angular momentum that is lost due to the stellar wind.
-    // Esseldeurs et al. 2025, below Eq. 22
+    // Esseldeurs et al. 2025, Eq. 21, based on Saladino et al. 2019
     fn wind_orbital_angular_momentum_loss(&self, mass_ratio: f64, therminal_wind_speed: f64, orbital_velocity: f64) -> f64 {
-        mass_ratio.powi(2) / (1. + mass_ratio.powi(2))
+        let wind_orbital_angular_momentum_loss_iso = mass_ratio.powi(2) / (1. + mass_ratio).powi(2);
+        let wind_orbital_angular_momentum_loss = 1.0 / (
+            max!(mass_ratio.powi(-1), 0.6 * mass_ratio.powf(-1.7)) + ((0.5 + 0.3 / mass_ratio) * therminal_wind_speed / orbital_velocity).powi(3)
+        ) + wind_orbital_angular_momentum_loss_iso;
+        min!(wind_orbital_angular_momentum_loss, 0.6)
     }
 
     fn dynamical_tide_dissipation(&self) -> f64 {
@@ -511,3 +519,4 @@ pub mod tests;
 // Mathis 2015, https://doi.org/10.1051/0004-6361/201526472
 // Matt et al. 2015, https://doi.org/10.1088/2041-8205/799/2/L23
 // Ogilvie 2013, https://doi.org/10.1093/mnras/sts362
+// Saladino et al. 2019, https://doi.org/10.1051/0004-6361/201834598

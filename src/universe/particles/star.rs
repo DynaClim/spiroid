@@ -323,7 +323,7 @@ impl Star {
     fn wind_orbital_angular_momentum_loss(&self, mass_ratio: f64, therminal_wind_speed: f64, orbital_velocity: f64) -> f64 {
         let wind_orbital_angular_momentum_loss_iso = mass_ratio.powi(2) / (1. + mass_ratio).powi(2);
         let wind_orbital_angular_momentum_loss = 1.0 / (
-            max!(mass_ratio.powi(-1), 0.6 * mass_ratio.powf(-1.7)) + ((0.5 + 0.3 / mass_ratio) * therminal_wind_speed / orbital_velocity).powi(3)
+            max!(mass_ratio.powi(-1), 0.6 * mass_ratio.powf(-1.7)) + ((1.5 + 0.3 / mass_ratio) * therminal_wind_speed / orbital_velocity).powi(3)
         ) + wind_orbital_angular_momentum_loss_iso;
         min!(wind_orbital_angular_momentum_loss, 0.6)
     }

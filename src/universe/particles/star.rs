@@ -188,8 +188,7 @@ impl Star {
 
                 if matches!(self.evolution, Evolution::Mesa { .. }) {
                     self.convective_turnover_time = values[10];
-                    self.core_envelope_coupling_constant = values[11];
-                    self.evolved_mass_loss_rate = values[12];
+                    self.evolved_mass_loss_rate = values[11];
                 }
 
                 self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();

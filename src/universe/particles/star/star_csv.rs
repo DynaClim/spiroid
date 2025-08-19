@@ -18,8 +18,6 @@ pub struct StarCsv {
     #[serde(default)]
     convective_turnover_time: f64, // (s)
     #[serde(default)]
-    core_envelope_coupling_constant: f64, // (s)
-    #[serde(default)]
     mass_loss_rate: f64, // (kg.s-1)
 
     // Calculated internally, not included in the CSV.
@@ -94,7 +92,6 @@ impl StarCsv {
             self.radiative_mass_derivative,
             self.convective_moment_of_inertia_derivative,
             self.convective_turnover_time,
-            self.core_envelope_coupling_constant,
             self.mass_loss_rate,
         ]
     }

@@ -54,10 +54,10 @@ pub struct Star {
     // Evolution model of the star (if enabled).
     evolution: Evolution,
     // Evolving parameters
-    age: f64,               // (s)
-    pub(crate) radius: f64, // (m)
-    convective_radius: f64, // (m)
-    pub(crate) radiative_mass: f64,    // (kg)
+    age: f64,                       // (s)
+    pub(crate) radius: f64,         // (m)
+    convective_radius: f64,         // (m)
+    pub(crate) radiative_mass: f64, // (kg)
     pub(crate) convective_moment_of_inertia_derivative: f64,
     pub(crate) convective_moment_of_inertia: f64, // (kg.m2)
     pub(crate) radiative_moment_of_inertia: f64,  // (kg.m2)

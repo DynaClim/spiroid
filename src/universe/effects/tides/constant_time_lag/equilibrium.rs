@@ -1,6 +1,6 @@
+use crate::constants::{GRAVITATIONAL, PI, SOLAR_MASS, SOLAR_RADIUS};
+use crate::universe::particles::{Planet, Star};
 use serde::{Deserialize, Serialize};
-use crate::universe::particles::{Star, Planet};
-use crate::constants::{GRAVITATIONAL, SOLAR_MASS, SOLAR_RADIUS, PI};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub enum Equilibrium {
@@ -14,7 +14,7 @@ pub enum Equilibrium {
         c_f: f64,
         gamma_f: f64,
     },
-    Evolution
+    Evolution,
 }
 
 impl Equilibrium {
@@ -24,9 +24,11 @@ impl Equilibrium {
             Equilibrium::SigmaBarStar { sigma_bar_star } => {
                 self.tidal_quality_sigma_bar_star(star, *sigma_bar_star)
             }
-            Equilibrium::Zahn { f_prime, c_f, gamma_f } => {
-                self.tidal_quality_zahn(star, planet, *f_prime, *c_f, *gamma_f)
-            }
+            Equilibrium::Zahn {
+                f_prime,
+                c_f,
+                gamma_f,
+            } => self.tidal_quality_zahn(star, planet, *f_prime, *c_f, *gamma_f),
             Equilibrium::Evolution => {
                 todo!()
             }
@@ -47,17 +49,29 @@ impl Equilibrium {
                 * sigma_bar_star
                 * normalisation_constant
                 * star.radius.powi(5));
-                
+
         equilibrium_tide_quality_factors
     }
 
     // Equilibrium tide with Zahn prescription following the parametrisation of equation 1 in Mustill & Villaver (2012)
-    pub fn tidal_quality_zahn(&self, star: &Star, planet: &Planet, f_prime: f64, c_f: f64, gamma_f: f64) -> f64 {
-        let f2 = f_prime * min!(1_f64, ((2. * PI) / (2. * planet.mean_motion * c_f * star.convective_turnover_time)).powf(gamma_f));
-        let k2 = 1. / 27.
-            / star.convective_turnover_time
+    pub fn tidal_quality_zahn(
+        &self,
+        star: &Star,
+        planet: &Planet,
+        f_prime: f64,
+        c_f: f64,
+        gamma_f: f64,
+    ) -> f64 {
+        let f2 = f_prime
+            * min!(
+                1_f64,
+                ((2. * PI) / (2. * planet.mean_motion * c_f * star.convective_turnover_time))
+                    .powf(gamma_f)
+            );
+        let k2 = 1. / 27. / star.convective_turnover_time
             * (1. - star.radiative_mass / star.mass)
-            * (star.mass + planet.mass) / star.mass
+            * (star.mass + planet.mass)
+            / star.mass
             / planet.mean_motion
             * (star.radius / planet.semi_major_axis).powi(3)
             * (2. * f2);

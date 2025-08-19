@@ -1,21 +1,19 @@
+use crate::universe::particles::{Planet, Star};
 use serde::{Deserialize, Serialize};
-use crate::universe::particles::{Star, Planet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub enum Inertial {
     #[default]
     Disabled,
     FrequencyAveraged,
-    FrequencyDependant
+    FrequencyDependant,
 }
 
 impl Inertial {
     pub fn tidal_quality(&self, star: &Star, _planet: &Planet) -> f64 {
         match self {
             Inertial::Disabled => f64::INFINITY,
-            Inertial::FrequencyAveraged => {
-                self.tidal_quality_frequency_averaged(star)
-            }
+            Inertial::FrequencyAveraged => self.tidal_quality_frequency_averaged(star),
             Inertial::FrequencyDependant => {
                 todo!()
             }
@@ -34,15 +32,14 @@ impl Inertial {
         // Epsilon to ensure a smooth transition equilibrium / dynamical tide
         let epsilon_step = 1.0E-06;
 
-        let dynamical_tide_quality_factors =
-            3. / (2. * star.dynamical_tide_dissipation * star.spin.powi(2))
-                / 0.5
-                / (1. + tanh!((star.tidal_frequency + 2. * star.spin) / epsilon_step));
+        let dynamical_tide_quality_factors = 3.
+            / (2. * star.dynamical_tide_dissipation * star.spin.powi(2))
+            / 0.5
+            / (1. + tanh!((star.tidal_frequency + 2. * star.spin) / epsilon_step));
 
         dynamical_tide_quality_factors
     }
 }
-
 
 // References:
 // Mathis 2015, https://doi.org/10.1051/0004-6361/201526472

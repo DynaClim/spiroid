@@ -1,9 +1,9 @@
 use super::*;
 use crate::universe::effects::magnetism::{IsothermalWind, MagneticModel};
-use crate::universe::particles::TidalModel;
 use crate::universe::effects::tides::ConstantTimeLag;
 use crate::universe::effects::tides::constant_time_lag::Equilibrium;
 use crate::universe::effects::tides::constant_time_lag::Inertial;
+use crate::universe::particles::TidalModel;
 use crate::universe::particles::planet::tests::{test_planet, test_planet_magnetic};
 use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_TIME};
 
@@ -199,9 +199,11 @@ fn _tidal_torque_enabled() {
     star.refresh_tidal_frequency(&planet);
     let tides = TidalModel::ConstantTimeLag {
         constant_time_lag: ConstantTimeLag {
-            equilibrium: Equilibrium::SigmaBarStar { sigma_bar_star: 1e-6 },
+            equilibrium: Equilibrium::SigmaBarStar {
+                sigma_bar_star: 1e-6,
+            },
             inertial: Inertial::FrequencyAveraged,
-        }
+        },
     };
     let result = tides.tidal_torque(&star, &planet);
     assert_eq!(expected, result);

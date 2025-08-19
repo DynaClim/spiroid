@@ -243,7 +243,7 @@ impl Star {
         self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
 
         // Zero the torques. They will be calculated if associated effects are enabled.
-        self.tidal_torque = 0.0;
+        self.tidal_torque_convective = 0.0;
         self.magnetic_torque = 0.0;
         self.wind_torque = 0.0;
         self.alfven_radius = 0.0;
@@ -257,8 +257,8 @@ impl Star {
     }
 
     // Update the tidal torque.
-    pub(crate) fn update_tidal_torque(&mut self, tidal_torque: f64) {
-        self.tidal_torque = tidal_torque;
+    pub(crate) fn update_tidal_torque(&mut self, tidal_torque_convective: f64) {
+        self.tidal_torque_convective = tidal_torque_convective;
     }
 
     // Update the magnetic torque.

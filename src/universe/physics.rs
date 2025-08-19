@@ -70,7 +70,7 @@ fn star_convective_zone_angular_momentum_derivative(star: &Star, disk_is_dissipa
         // evolved_wind_torque should be zero if not in the post main sequence.
         + star.evolved_wind_torque
         + star.magnetic_torque
-        + star.tidal_torque
+        + star.tidal_torque_convective
 }
 
 // Rate of change in the angular momentum in the radiative zone.

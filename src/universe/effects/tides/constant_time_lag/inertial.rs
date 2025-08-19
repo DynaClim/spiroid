@@ -12,6 +12,7 @@ pub enum Inertial {
 impl Inertial {
     pub fn tidal_quality(&self, star: &Star, _planet: &Planet) -> f64 {
         match self {
+            // TODO should this really be INFINITY?
             Inertial::Disabled => f64::INFINITY,
             Inertial::FrequencyAveraged => self.tidal_quality_frequency_averaged(star),
             Inertial::FrequencyDependant => {

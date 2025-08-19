@@ -19,6 +19,7 @@ pub enum Equilibrium {
 impl Equilibrium {
     pub fn tidal_quality(&self, star: &Star, planet: &Planet) -> f64 {
         match self {
+            // TODO should this really be INFINITY?
             Equilibrium::Disabled => f64::INFINITY,
             Equilibrium::SigmaBarStar(sigma_bar_star) => {
                 self.tidal_quality_sigma_bar_star(star, *sigma_bar_star)

@@ -91,7 +91,8 @@ pub(crate) fn planet_semi_major_axis_13_div_2_derivative(planet: &Planet, star: 
         * (1. / (star.mass * planet.mass))
         * planet.semi_major_axis.powi(6)
         * (star.magnetic_torque + star.tidal_torque_convective)
-        + 13. / 2. * planet.semi_major_axis.powf(11. / 2.) * star.evolved_wind_orbit_torque
+    // TODO do we have a reference for this?
+    + 13. / 2. * planet.semi_major_axis.powf(11. / 2.) * star.evolved_wind_orbit_torque
 }
 
 // Semi-major axis derivative.

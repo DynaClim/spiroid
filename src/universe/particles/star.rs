@@ -233,20 +233,17 @@ impl Star {
         self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
         self.mass_transfer_envelope_to_core_torque = self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
 
-        // Only used by tides and magnetism
-        if !matches!(self.evolution, Evolution::Mesa { .. }) {
+        if matches!(self.evolution, Evolution::Mesa { .. }) {
+            self.core_envelope_coupling_constant = self.evolving_core_envelope_coupling_constant(); // requres mass, spin
+        } else {
+            // Only used by tides and magnetism
             let convective_zone_mass_ratio = (self.mass - self.radiative_mass) / self.mass;
             self.convective_turnover_time =
                 Self::convective_turnover_time(convective_zone_mass_ratio);
         }
+
         self.rossby = self.rossby(); // requires convective_turnover_time, spin
         self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
-
-        if matches!(self.evolution, Evolution::Mesa { .. }) {
-            // Gallet & Delorme 2019, Eq. 18.
-            self.core_envelope_coupling_constant = 74.6e6 * SECONDS_IN_YEAR * (self.mass / SOLAR_MASS).powf(-3.83)
-                        * (abs!(self.spin) / SOLAR_ANGULAR_VELOCITY).powf(-0.69);
-        }
 
         // Zero the torques. They will be calculated if associated effects are enabled.
         self.tidal_torque_convective = 0.0;
@@ -288,6 +285,7 @@ impl Star {
         }
     }
 
+    // TODO comment and reference.
     fn evolved_wind_orbit_torque(&mut self, planet: &Planet) -> f64 {
         self.therminal_wind_speed = self.therminal_wind_speed(); // requires mass, radius
         let orbital_velocity = planet.mean_motion * planet.semi_major_axis; // requires semi_major_axis, mean_motion
@@ -401,17 +399,26 @@ impl Star {
 
     // Adjust the mass in each layer (radiative and convective) based on the stellar evolution model.
     // Benbakoura et al. 2019, Eq 2.
+    // TODO does this need another reference due to changes?
     fn mass_transfer_envelope_to_core_torque(&self) -> f64 {
         // Takes into account the structural evolution of the star and the torques applied on both radiative and convective zones.
         if self.radiative_mass_derivative >= 0.0 {
             // If the radiative mass is increasing, the rotation of the convective zone is transferred to the radiative zone.
             (2. / 3.) * self.convective_radius.powi(2) * self.spin * self.radiative_mass_derivative
         } else {
-            if self.radiative_zone_angular_momentum == 0.0 || self.radiative_moment_of_inertia == 0.0 {
+            if self.radiative_zone_angular_momentum == 0.0
+                || self.radiative_moment_of_inertia == 0.0
+            {
                 0.0
             } else {
-                let minspin = min!(self.spin, self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia);
-                (2. / 3.) * self.convective_radius.powi(2) * minspin * self.radiative_mass_derivative
+                let minspin = min!(
+                    self.spin,
+                    self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia
+                );
+                (2. / 3.)
+                    * self.convective_radius.powi(2)
+                    * minspin
+                    * self.radiative_mass_derivative
             }
         }
     }
@@ -465,6 +472,15 @@ impl Star {
     // Madappatt et al 2016, Eq. 2
     fn evolved_wind_torque(&self) -> f64 {
         -2. / 3. * self.spin * self.evolved_mass_loss_rate * self.radius.powi(2)
+    }
+
+    // Gallet & Delorme 2019, Eq. 18.
+    // TODO comment and rename if required.
+    fn evolving_core_envelope_coupling_constant(&self) -> f64 {
+        74.6e6
+            * SECONDS_IN_YEAR
+            * (self.mass / SOLAR_MASS).powf(-3.83)
+            * (abs!(self.spin) / SOLAR_ANGULAR_VELOCITY).powf(-0.69)
     }
 
     // Alfven radius estimate from the stellar wind torque and mass loss rate.

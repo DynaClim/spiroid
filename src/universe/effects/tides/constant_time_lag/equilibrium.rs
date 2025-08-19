@@ -6,9 +6,8 @@ use serde::{Deserialize, Serialize};
 pub enum Equilibrium {
     #[default]
     Disabled,
-    SigmaBarStar {
-        sigma_bar_star: f64, // dimensionless sigma_bar_star
-    },
+    SigmaBarStar(f64), // dimensionless
+    //TODO these need better names. What are they and do they have units?
     Zahn {
         f_prime: f64,
         c_f: f64,
@@ -21,7 +20,7 @@ impl Equilibrium {
     pub fn tidal_quality(&self, star: &Star, planet: &Planet) -> f64 {
         match self {
             Equilibrium::Disabled => f64::INFINITY,
-            Equilibrium::SigmaBarStar { sigma_bar_star } => {
+            Equilibrium::SigmaBarStar(sigma_bar_star) => {
                 self.tidal_quality_sigma_bar_star(star, *sigma_bar_star)
             }
             Equilibrium::Zahn {

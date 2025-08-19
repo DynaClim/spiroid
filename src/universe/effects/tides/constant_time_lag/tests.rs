@@ -6,9 +6,7 @@ use pretty_assertions::assert_eq;
 
 pub fn test_constant_time_lag() -> ConstantTimeLag {
     ConstantTimeLag {
-        equilibrium: Equilibrium::SigmaBarStar {
-            sigma_bar_star: 1e-6,
-        },
+        equilibrium: Equilibrium::SigmaBarStar(1e-6),
         inertial: Inertial::FrequencyAveraged,
     }
 }

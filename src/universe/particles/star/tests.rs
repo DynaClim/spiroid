@@ -198,9 +198,7 @@ fn _tidal_torque_enabled() {
     let planet = test_planet();
     star.refresh_tidal_frequency(&planet);
     let tides = TidalModel::ConstantTimeLag(ConstantTimeLag {
-        equilibrium: Equilibrium::SigmaBarStar {
-            sigma_bar_star: 1e-6,
-        },
+        equilibrium: Equilibrium::SigmaBarStar(1e-6),
         inertial: Inertial::FrequencyAveraged,
     });
     let result = tides.tidal_torque(&star, &planet);

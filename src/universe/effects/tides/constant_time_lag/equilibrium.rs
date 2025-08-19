@@ -42,7 +42,8 @@ impl Equilibrium {
 
         let normalisation_constant = sqrt!(GRAVITATIONAL / (SOLAR_MASS * SOLAR_RADIUS.powi(7)));
         // Tidal quality factors for the equilibrium tide
-        // This is Eq. 22 of Benbakoura et al. 2019, omitting the factor 3/2 (which is due to a typo in the paper)
+        // This is Eq. 22 of Benbakoura et al. 2019
+        // omitting the factor 3/2 (which is due to a typo in the paper)
         let equilibrium_tide_quality_factors = GRAVITATIONAL
             / (abs!(star.tidal_frequency + epsilon_secure)
                 * sigma_bar_star
@@ -52,7 +53,8 @@ impl Equilibrium {
         equilibrium_tide_quality_factors
     }
 
-    // Equilibrium tide with Zahn prescription following the parametrisation of equation 1 in Mustill & Villaver (2012)
+    // Equilibrium tide with Zahn prescription
+    // following the parametrisation (Mustill & Villaver, 2012, Eq. 1)
     pub fn tidal_quality_zahn(
         &self,
         star: &Star,

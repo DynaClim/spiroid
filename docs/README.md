@@ -176,6 +176,9 @@ Magnetic interaction (initiated by the star) can be toggled into the following s
 Set the `magnetism` property of the `central_body` `Particle` to `Wind`.
 Set the desired values of `magnetic_field` for `Planet` and `Star`.
 
+### Evolved Wind
+When using a `MESA` stellar evolutionary model, the evolved wind is automatically enabled. From the amount of mass that is lost from the stellar wind, the angular momentum of the envelope is reduced, and the semi-major axis of the orbiting body is affected.
+
 ### Tides
 
 Tides for each particle can be toggled independently into the following states:

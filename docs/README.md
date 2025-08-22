@@ -190,7 +190,17 @@ Tides for each particle can be toggled independently into the following states:
 > Note: Currently CTL is not implemented for the Planet, and Kaula is not implemented for the Star.
 
 #### Constant Time Lag (star)
-Set the `tides` property of the `central_body` particle to `ConstantTimeLag` and provide the `sigma_bar_star` factor.
+Set the `tides` property of the `central_body` particle to `ConstantTimeLag`. The following header fields specify which tide is active:
+
+- `Equilibrium`
+    Activates the equilibrium tide.
+    * `Disabled` (default)
+    * `SigmaBarStar` Follows the $\bar\sigma_\star$ formalism of [Hansen 2010](https://doi.org/10.1088/0004-637X/723/1/285). Requires a $\bar\sigma_\star$ factor.
+    * `Zahn` Follows the Zahn formalism as parameterised in [Mustill & Villaver 2012](http://doi.org/10.1088/0004-637X/761/2/121). Requires `f_prime` ($f^\prime$), `c_f` ($c_f$) and `gamma_f` ($\gamma_f$) of order unity.
+- `Inertial`
+    Activates the dynamical tide for inertial waves/modes.
+    * `Disabled` (default)
+    * `FrequencyAveraged` Follows the frequency-averaged formalism described in [Mathis 2015](https://doi.org/10.1051/0004-6361/201526472)
 
 #### Kaula tides (planet)
 Set the `tides` property of the `orbiting_body` particle to `KaulaTides`, specify the `particle_type` (e.g. `Solid`) and provide the appropriate love number data file.
@@ -232,6 +242,8 @@ src
 │   │   ├── magnetism.rs
 │   │   ├── tides
 │   │   │   ├── constant_time_lag.rs
+│   │   │   │   ├── equilibrium.rs
+│   │   │   │   └── inertial.rs
 │   │   │   ├── kaula
 │   │   │   │   ├── love_number.rs
 │   │   │   │   └── polynomials.rs

@@ -12,7 +12,9 @@ pub enum Inertial {
 impl Inertial {
     pub fn tidal_quality(&self, star: &Star, _planet: &Planet) -> f64 {
         match self {
-            // TODO should this really be INFINITY?
+            // When tides are disabled the tidal quality factor would be 1 / 0.
+            // We set the tidal_quality to infinity such that 1 / infinity == 0 == disabled.
+            // TODO ?One way to change this is to work with the Love numbers rather than the quality factor.
             Inertial::Disabled => f64::INFINITY,
             Inertial::FrequencyAveraged => self.tidal_quality_frequency_averaged(star),
             Inertial::FrequencyDependant => {

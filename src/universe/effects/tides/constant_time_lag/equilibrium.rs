@@ -2,33 +2,46 @@ use crate::constants::{GRAVITATIONAL, PI, SOLAR_MASS, SOLAR_RADIUS};
 use crate::universe::particles::{Planet, Star};
 use serde::{Deserialize, Serialize};
 
+// Order unity parameters (Mustill & Villaver, 2012)
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Zahn {
+    f_prime: f64,
+    c_f: f64,
+    gamma_f: f64,
+}
+
+impl Default for Zahn {
+    fn default() -> Self {
+        Self {
+            f_prime: 9. / 5.,
+            c_f: 1.,
+            gamma_f: 2.,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub enum Equilibrium {
     #[default]
     Disabled,
-    SigmaBarStar(f64), // dimensionless
-    //TODO these need better names. What are they and do they have units?
-    Zahn {
-        f_prime: f64,
-        c_f: f64,
-        gamma_f: f64,
-    },
+    SigmaBarStar(f64),
+    Zahn(Zahn),
     Evolution,
 }
 
 impl Equilibrium {
     pub fn tidal_quality(&self, star: &Star, planet: &Planet) -> f64 {
         match self {
-            // TODO should this really be INFINITY?
+            // When tides are disabled the tidal quality factor would be 1 / 0.
+            // We set the tidal_quality to infinity such that 1 / infinity == 0 == disabled.
+            // TODO ?One way to change this is to work with the Love numbers rather than the quality factor.
             Equilibrium::Disabled => f64::INFINITY,
             Equilibrium::SigmaBarStar(sigma_bar_star) => {
                 self.tidal_quality_sigma_bar_star(star, *sigma_bar_star)
             }
-            Equilibrium::Zahn {
-                f_prime,
-                c_f,
-                gamma_f,
-            } => self.tidal_quality_zahn(star, planet, *f_prime, *c_f, *gamma_f),
+            Equilibrium::Zahn(zahn) => {
+                self.tidal_quality_zahn(star, planet, zahn.f_prime, zahn.c_f, zahn.gamma_f)
+            }
             Equilibrium::Evolution => {
                 todo!()
             }

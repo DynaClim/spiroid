@@ -6,9 +6,9 @@ use sci_file::{
 };
 use simulation::Integrator;
 use simulation::simulation::InputConfig;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-fn test_simulation(config: PathBuf) -> Universe {
+fn test_simulation(config: impl AsRef<Path>) -> Universe {
     // Parse the config file.
     let mut config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
     // Load stellar evolution data from file.
@@ -82,8 +82,9 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
 
 #[test]
 fn serde_roundtrip() {
-    let path = "examples/all_effects.conf";
-    let config: InputConfig<Universe> = read_json_from_file(&path).unwrap();
+    let (config, _) = make_testcase_paths("all_effects");
+
+    let config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
     let universe = config.system;
 
     let tmp = serde_json::to_string(&universe).unwrap();
@@ -94,8 +95,9 @@ fn serde_roundtrip() {
 
 #[test]
 fn postcard_roundtrip() {
-    let path = "examples/all_effects.conf";
-    let config: InputConfig<Universe> = read_json_from_file(&path).unwrap();
+    let (config, _) = make_testcase_paths("all_effects");
+
+    let config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
     let universe = config.system;
 
     let tmp = postcard::to_stdvec(&universe).unwrap();
@@ -106,8 +108,9 @@ fn postcard_roundtrip() {
 
 #[test]
 fn postcard_vs_serde() {
-    let path = "examples/all_effects.conf";
-    let universe = test_simulation(path.into());
+    let (config, _) = make_testcase_paths("all_effects");
+
+    let universe = test_simulation(config);
 
     let tmp = serde_json::to_string(&universe).unwrap();
     let serde_universe: Universe = serde_json::from_str(&tmp).unwrap();
@@ -118,44 +121,57 @@ fn postcard_vs_serde() {
     assert_eq!(serde_universe, postcard_universe)
 }
 
-#[test]
-fn example_no_effects() {
-    let result = test_simulation("examples/no_effects.conf".into());
-    compare_or_create("examples/no_effects_expected.json", &result);
+fn make_testcase_paths(testcase: &str) -> (String, String) {
+    let config = format!("examples/{}.conf", testcase);
+    let expected = format!("examples/{}_{}.json", testcase, "expected");
+    (config, expected)
 }
 
 #[test]
-fn example_tides() {
-    let result = test_simulation("examples/tides.conf".into());
-    compare_or_create("examples/tides_expected.json", &result);
+fn example_no_effects_starevol() {
+    let (config, expected) = make_testcase_paths("no_effects_starevol");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
+}
+
+#[test]
+fn example_star_equilibrium_tides() {
+    let (config, expected) = make_testcase_paths("star_equilibrium_tides");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
 }
 
 #[test]
 fn example_magnetic() {
-    let result = test_simulation("examples/magnetic.conf".into());
-    compare_or_create("examples/magnetic_expected.json", &result);
+    let (config, expected) = make_testcase_paths("magnetic");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
 }
 
 #[test]
 fn example_magnetic_tides() {
-    let result = test_simulation("examples/magnetic_tides.conf".into());
-    compare_or_create("examples/magnetic_tides_expected.json", &result);
+    let (config, expected) = make_testcase_paths("magnetic_tides");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
 }
 
 #[test]
-fn example_kaula_solid() {
-    let result = test_simulation("examples/kaula_solid.conf".into());
-    compare_or_create("examples/kaula_solid_expected.json", &result);
+fn example_planet_kaula_solid_tides() {
+    let (config, expected) = make_testcase_paths("planet_kaula_solid_tides");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
 }
 
 #[test]
 fn example_all_effects() {
-    let result = test_simulation("examples/all_effects.conf".into());
-    compare_or_create("examples/all_effects_expected.json", &result);
+    let (config, expected) = make_testcase_paths("all_effects");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
 }
 
 #[test]
 fn example_mesa() {
-    let result = test_simulation("examples/mesa.conf".into());
-    compare_or_create("examples/mesa_expected.json", &result);
+    let (config, expected) = make_testcase_paths("mesa");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
 }

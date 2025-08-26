@@ -175,3 +175,10 @@ fn example_mesa() {
     let result = test_simulation(&config);
     compare_or_create(&expected, &result);
 }
+
+#[test]
+fn example_zahn() {
+    let (config, expected) = make_testcase_paths("star_zahn_tides_mesa");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
+}

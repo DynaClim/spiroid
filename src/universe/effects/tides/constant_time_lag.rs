@@ -19,10 +19,10 @@ impl ConstantTimeLag {
     // without the factors that are in the function semi_major_axis_13_div_2_derivative in physics.rs
     // The a^-6 is here to compensate the a^6 in physics.rs
     pub fn tidal_torque(&self, star: &Star, planet: &Planet) -> f64 {
-        let total_dissipiation = 1. / self.equilibrium.tidal_quality(star, planet)
+        let total_dissipation = 1. / self.equilibrium.tidal_quality(star, planet)
             + 1. / self.inertial.tidal_quality(star, planet);
 
-        let tidal_quality = 1. / total_dissipiation;
+        let tidal_quality = 1. / total_dissipation;
         // Smoothing parameter when tidal frequency is 0
         let depth = 1E-08;
         -(9. / 4.)

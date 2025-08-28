@@ -462,6 +462,8 @@ impl Star {
     }
 
     // Gallet & Delorme 2019, Eq. 1.
+    // Evolving core-envelope coupling constant that reduces
+    // the coupling efficiency during the evolved phases.
     fn evolving_core_envelope_coupling_constant(&self) -> f64 {
         74.6e6
             * SECONDS_IN_YEAR

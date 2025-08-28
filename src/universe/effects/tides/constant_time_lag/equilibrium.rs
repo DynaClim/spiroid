@@ -12,10 +12,11 @@ pub struct Zahn {
 
 impl Default for Zahn {
     fn default() -> Self {
+        // Values adopted from Mustill & Villaver (2012)
         Self {
-            f_prime: 9. / 5.,
+            f_prime: 9. / 5., // multiplication factor for the dissipation
             c_f: 1.,
-            gamma_f: 2.,
+            gamma_f: 2., // exponent for the frequency dependence of the viscosity
         }
     }
 }
@@ -34,7 +35,6 @@ impl Equilibrium {
         match self {
             // When tides are disabled the tidal quality factor would be 1 / 0.
             // We set the tidal_quality to infinity such that 1 / infinity == 0 == disabled.
-            // TODO ?One way to change this is to work with the Love numbers rather than the quality factor.
             Equilibrium::Disabled => f64::INFINITY,
             Equilibrium::SigmaBarStar(sigma_bar_star) => {
                 self.tidal_quality_sigma_bar_star(star, *sigma_bar_star)

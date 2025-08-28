@@ -86,7 +86,7 @@ pub struct Star {
     pub(crate) evolved_change_semi_major_axis: f64,
     // Additional mass loss rate during the evolved phase of the star.
     evolved_mass_loss_rate: f64, // (kg.s-1)
-    terminal_wind_speed: f64,   // (m.s-1)
+    terminal_wind_speed: f64,    // (m.s-1)
     mass_accretion_efficiency: f64,
     wind_orbital_angular_momentum_loss: f64,
 
@@ -300,6 +300,7 @@ impl Star {
             orbital_velocity,
         ); // requires terminal_wind_speed, orbital_velocity, mass_ratio
 
+        // Esseldeurs et al. 2025, Eq. 20
         2. * planet.semi_major_axis * self.evolved_mass_loss_rate / self.mass
             * (1.
                 - self.mass_accretion_efficiency / mass_ratio
@@ -307,7 +308,7 @@ impl Star {
                     * (1. - self.mass_accretion_efficiency)
                     * (1. + mass_ratio)
                     / mass_ratio
-                - (1. - self.mass_accretion_efficiency) / 2. / (1. + mass_ratio)) // Esseldeurs et al. 2025, Eq. 20
+                - (1. - self.mass_accretion_efficiency) / 2. / (1. + mass_ratio))
     }
 
     // Computes the terminal wind speed.
@@ -327,17 +328,18 @@ impl Star {
         terminal_wind_speed: f64,
         orbital_velocity: f64,
     ) -> f64 {
-        let mass_accretion_efficiency_bhl = mass_ratio.powi(2) / (1. + mass_ratio).powi(2) // Bondi-Hoyle-Lyttleton accretion, see Edgar 2004
+        // Bondi-Hoyle-Lyttleton accretion, see Edgar 2004
+        let mass_accretion_efficiency_bhl = mass_ratio.powi(2) / (1. + mass_ratio).powi(2)
             * orbital_velocity.powi(4)
             / (terminal_wind_speed
                 * (terminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5));
+        // Esseldeurs et al. 2025, below Eq. 20
         let mass_accretion_efficiency = (0.75
             + 1.0
                 / (1.7
                     + 0.3 / mass_ratio
-                    + ((0.5 + 0.2 / mass_ratio) * terminal_wind_speed / orbital_velocity)
-                        .powi(5)))
-            * mass_accretion_efficiency_bhl; // Esseldeurs et al. 2025, below Eq. 20
+                    + ((0.5 + 0.2 / mass_ratio) * terminal_wind_speed / orbital_velocity).powi(5)))
+            * mass_accretion_efficiency_bhl;
         min!(mass_accretion_efficiency, 0.3_f64, 1.4 * mass_ratio.powi(2))
     }
 
@@ -401,27 +403,24 @@ impl Star {
 
     // Adjust the mass in each layer (radiative and convective) based on the stellar evolution model.
     // Benbakoura et al. 2019, Eq 2.
-    // TODO does this need another reference due to changes?
     fn mass_transfer_envelope_to_core_torque(&self) -> f64 {
         // Takes into account the structural evolution of the star and the torques applied on both radiative and convective zones.
         if self.radiative_mass_derivative >= 0.0 {
             // If the radiative mass is increasing, the rotation of the convective zone is transferred to the radiative zone.
             (2. / 3.) * self.convective_radius.powi(2) * self.spin * self.radiative_mass_derivative
+        } else if self.radiative_zone_angular_momentum == 0.0
+            || self.radiative_moment_of_inertia == 0.0
+        {
+            0.0
         } else {
-            if self.radiative_zone_angular_momentum == 0.0
-                || self.radiative_moment_of_inertia == 0.0
-            {
-                0.0
-            } else {
-                let minspin = min!(
-                    self.spin,
-                    self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia
-                );
-                (2. / 3.)
-                    * self.convective_radius.powi(2)
-                    * minspin
-                    * self.radiative_mass_derivative
-            }
+            let minspin = min!(
+                self.spin,
+                self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia
+            );
+            (2. / 3.)
+                * self.convective_radius.powi(2)
+                * minspin
+                * self.radiative_mass_derivative
         }
     }
 
@@ -477,7 +476,6 @@ impl Star {
     }
 
     // Gallet & Delorme 2019, Eq. 18.
-    // TODO comment and rename if required.
     fn evolving_core_envelope_coupling_constant(&self) -> f64 {
         74.6e6
             * SECONDS_IN_YEAR

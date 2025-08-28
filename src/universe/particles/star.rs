@@ -285,6 +285,9 @@ impl Star {
     }
 
     // TODO comment and reference.
+    // Only works for circular orbits, can be extended for eccentric orbits.
+    // TODO: Add further explenation
+    // TODO: therminal terminal check
     fn evolved_wind_orbit_torque(&mut self, planet: &Planet) -> f64 {
         self.therminal_wind_speed = self.therminal_wind_speed(); // requires mass, radius
         let orbital_velocity = planet.mean_motion * planet.semi_major_axis; // requires semi_major_axis, mean_motion
@@ -324,7 +327,7 @@ impl Star {
         therminal_wind_speed: f64,
         orbital_velocity: f64,
     ) -> f64 {
-        let mass_accretion_efficiency_bhl = mass_ratio.powi(2) / (1. + mass_ratio).powi(2)
+        let mass_accretion_efficiency_bhl = mass_ratio.powi(2) / (1. + mass_ratio).powi(2) // TODO: BHL: Paper
             * orbital_velocity.powi(4)
             / (therminal_wind_speed
                 * (therminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5));

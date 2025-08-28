@@ -87,7 +87,7 @@ fn star_radiative_zone_angular_momentum_derivative(star: &Star) -> f64 {
 // this means that what we call here the tidal torque is not exactly the tidal torque, but the tidal torque * a^6
 // or tidal torque without the semi-major axis dependency
 // The last line corresponds to the change in semi-major axis from the mass lost in the evolved phases of evolution.
-// TODO: Reference
+// evolved_change_semi_major_axis is da/dt so is multiplied by 13/2 a^{11/2} to represent the derivative of a^{13/2}
 pub(crate) fn planet_semi_major_axis_13_div_2_derivative(planet: &Planet, star: &Star) -> f64 {
     -13. * sqrt!((star.mass + planet.mass) / GRAVITATIONAL)
         * (1. / (star.mass * planet.mass))

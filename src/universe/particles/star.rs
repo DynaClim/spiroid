@@ -461,7 +461,7 @@ impl Star {
         -2. / 3. * self.spin * self.evolved_mass_loss_rate * self.radius.powi(2)
     }
 
-    // Gallet & Delorme 2019, Eq. 18.
+    // Gallet & Delorme 2019, Eq. 1.
     fn evolving_core_envelope_coupling_constant(&self) -> f64 {
         74.6e6
             * SECONDS_IN_YEAR
@@ -502,6 +502,7 @@ pub mod tests;
 // Efroimsky 2012, https://doi.org/10.1007/s10569-011-9397-4
 // Esseldeurs et al. 2025, submitted TODO update when published
 // Finley et al. 2018 https://doi.org/10.3847/1538-4357/aad7b6
+// Gallet & Delorme 2019, https://doi.org/10.1051/0004-6361/201834898
 // MacGregor & Brenner 1991, https://doi.org/10.1086/170269
 // Madappatt et al, 2016, https://doi.org/10.1093/mnras/stw2025
 // Mathis 2015, https://doi.org/10.1051/0004-6361/201526472

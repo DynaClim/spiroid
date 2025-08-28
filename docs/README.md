@@ -163,7 +163,7 @@ The format of the file must be CSV (Comma Separated Values) with the following h
 Additional fields, only required by MESA data files:
 
 - `convective_turnover_time` (seconds)
-- `mass_loss_rate ` mass loss rate duing the evolved phase (solar mass / year)
+- `mass_loss_rate ` mass loss rate during the evolved phase (solar mass / year)
 
 
 ### Magnetism (`Particle`)

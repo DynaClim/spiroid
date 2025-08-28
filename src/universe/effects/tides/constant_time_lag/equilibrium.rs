@@ -37,10 +37,10 @@ impl Equilibrium {
             // We set the tidal_quality to infinity such that 1 / infinity == 0 == disabled.
             Equilibrium::Disabled => f64::INFINITY,
             Equilibrium::SigmaBarStar(sigma_bar_star) => {
-                self.tidal_quality_sigma_bar_star(star, *sigma_bar_star)
+                Self::tidal_quality_sigma_bar_star(star, *sigma_bar_star)
             }
             Equilibrium::Zahn(zahn) => {
-                self.tidal_quality_zahn(star, planet, zahn.f_prime, zahn.c_f, zahn.gamma_f)
+                Self::tidal_quality_zahn(star, planet, zahn.f_prime, zahn.c_f, zahn.gamma_f)
             }
             Equilibrium::Evolution => {
                 todo!()
@@ -50,7 +50,7 @@ impl Equilibrium {
 
     // Equilibrium tide
     // Normalization constant for equilibrium tide (Bolmont & Mathis,  2016,  Eq. 8)
-    pub fn tidal_quality_sigma_bar_star(&self, star: &Star, sigma_bar_star: f64) -> f64 {
+    fn tidal_quality_sigma_bar_star(star: &Star, sigma_bar_star: f64) -> f64 {
         // Epsilon to ensure that equilibrium_tide_quality_factors stays finite
         let epsilon_secure = 1.0E-10;
 
@@ -58,19 +58,17 @@ impl Equilibrium {
         // Tidal quality factors for the equilibrium tide
         // This is Eq. 22 of Benbakoura et al. 2019
         // omitting the factor 3/2 (which is due to a typo in the paper)
-        let equilibrium_tide_quality_factors = GRAVITATIONAL
+
+        GRAVITATIONAL
             / (abs!(star.tidal_frequency + epsilon_secure)
                 * sigma_bar_star
                 * normalisation_constant
-                * star.radius.powi(5));
-
-        equilibrium_tide_quality_factors
+                * star.radius.powi(5))
     }
 
     // Equilibrium tide with Zahn prescription
     // following the parametrisation (Mustill & Villaver, 2012, Eq. 1)
-    pub fn tidal_quality_zahn(
-        &self,
+    fn tidal_quality_zahn(
         star: &Star,
         planet: &Planet,
         f_prime: f64,

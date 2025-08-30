@@ -8,7 +8,7 @@ pub use equilibrium::Equilibrium;
 pub(crate) mod inertial;
 pub use inertial::Inertial;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ConstantTimeLag {
     pub equilibrium: Equilibrium,
     pub inertial: Inertial,

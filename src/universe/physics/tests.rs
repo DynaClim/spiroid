@@ -123,7 +123,7 @@ fn _derivatives_magnetic_tides() {
                 equilibrium: Equilibrium::SigmaBarStar(1e-6),
                 inertial: Inertial::FrequencyAveraged,
             }),
-            magnetism: MagneticModel::Wind(IsothermalWind::default()),
+            magnetism: MagneticModel::Wind(wind),
             wind: WindModel::Enabled,
         },
         time: TEST_TIME,
@@ -222,7 +222,9 @@ fn _planet_semi_major_axis_13_div_2_derivative() {
         equilibrium: Equilibrium::SigmaBarStar(1e-6),
         inertial: Inertial::FrequencyAveraged,
     });
-    let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
+    let mut wind = IsothermalWind::default();
+    wind.footpoint_conductance = 7.0e4;
+    let mut magnetism = MagneticModel::Wind(wind);
     let tidal_torque_convective = tides.tidal_torque(&star, &planet);
     let magnetic_torque = magnetism.magnetic_torque(&planet, &star);
     let wind_torque = WindModel::Enabled.wind_torque();

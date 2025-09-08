@@ -293,12 +293,9 @@ impl Star {
         let orbital_velocity = planet.mean_motion * planet.semi_major_axis; // requires semi_major_axis, mean_motion
         let mass_ratio = planet.mass / self.mass; // requires mass, planet mass; Esseldeurs et al. 2025, below Eq. 18
         self.mass_accretion_efficiency =
-            self.mass_accretion_efficiency(mass_ratio, self.terminal_wind_speed, orbital_velocity); // requires terminal_wind_speed, orbital_velocity, mass_ratio
-        self.wind_orbital_angular_momentum_loss = self.wind_orbital_angular_momentum_loss(
-            mass_ratio,
-            self.terminal_wind_speed,
-            orbital_velocity,
-        ); // requires terminal_wind_speed, orbital_velocity, mass_ratio
+            self.mass_accretion_efficiency(mass_ratio, orbital_velocity); // requires terminal_wind_speed
+        self.wind_orbital_angular_momentum_loss =
+            self.wind_orbital_angular_momentum_loss(mass_ratio, orbital_velocity); // requires terminal_wind_speed
 
         // Esseldeurs et al. 2025, Eq. 20
         2. * planet.semi_major_axis * self.evolved_mass_loss_rate / self.mass
@@ -322,23 +319,19 @@ impl Star {
     // Computes the mass accretion efficiency.
     // This is the fraction of the stellar wind that is accreted by the planet.
     // Esseldeurs et al. 2025, Eq. 20, based on Saladino et al. 2019
-    fn mass_accretion_efficiency(
-        &self,
-        mass_ratio: f64,
-        terminal_wind_speed: f64,
-        orbital_velocity: f64,
-    ) -> f64 {
+    fn mass_accretion_efficiency(&self, mass_ratio: f64, orbital_velocity: f64) -> f64 {
         // Bondi-Hoyle-Lyttleton accretion, see Edgar 2004
         let mass_accretion_efficiency_bhl = mass_ratio.powi(2) / (1. + mass_ratio).powi(2)
             * orbital_velocity.powi(4)
-            / (terminal_wind_speed
-                * (terminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5));
+            / (self.terminal_wind_speed
+                * (self.terminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5));
         // Esseldeurs et al. 2025, below Eq. 20
         let mass_accretion_efficiency = (0.75
             + 1.0
                 / (1.7
                     + 0.3 / mass_ratio
-                    + ((0.5 + 0.2 / mass_ratio) * terminal_wind_speed / orbital_velocity).powi(5)))
+                    + ((0.5 + 0.2 / mass_ratio) * self.terminal_wind_speed / orbital_velocity)
+                        .powi(5)))
             * mass_accretion_efficiency_bhl;
         min!(mass_accretion_efficiency, 0.3_f64, 1.4 * mass_ratio.powi(2))
     }
@@ -346,16 +339,11 @@ impl Star {
     // Computes the wind orbital angular momentum loss.
     // This is the fraction of the orbital angular momentum that is lost due to the stellar wind.
     // Esseldeurs et al. 2025, Eq. 21, based on Saladino et al. 2019
-    fn wind_orbital_angular_momentum_loss(
-        &self,
-        mass_ratio: f64,
-        terminal_wind_speed: f64,
-        orbital_velocity: f64,
-    ) -> f64 {
+    fn wind_orbital_angular_momentum_loss(&self, mass_ratio: f64, orbital_velocity: f64) -> f64 {
         let wind_orbital_angular_momentum_loss_iso = mass_ratio.powi(2) / (1. + mass_ratio).powi(2);
         let wind_orbital_angular_momentum_loss = 1.0
             / (max!(mass_ratio.powi(-1), 0.6 * mass_ratio.powf(-1.7))
-                + ((1.5 + 0.3 / mass_ratio) * terminal_wind_speed / orbital_velocity).powi(3))
+                + ((1.5 + 0.3 / mass_ratio) * self.terminal_wind_speed / orbital_velocity).powi(3))
             + wind_orbital_angular_momentum_loss_iso;
         min!(wind_orbital_angular_momentum_loss, 0.6)
     }
@@ -417,10 +405,7 @@ impl Star {
                 self.spin,
                 self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia
             );
-            (2. / 3.)
-                * self.convective_radius.powi(2)
-                * minspin
-                * self.radiative_mass_derivative
+            (2. / 3.) * self.convective_radius.powi(2) * minspin * self.radiative_mass_derivative
         }
     }
 

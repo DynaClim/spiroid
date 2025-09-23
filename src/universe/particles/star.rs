@@ -447,11 +447,13 @@ impl Star {
         let gamma =
             8e23 * (self.radius / SOLAR_RADIUS).powf(3.1) * (self.mass / SOLAR_MASS).powf(0.5);
         // Wind braking torque in Joules, following (Matt et al. 2015)
-        if self.rossby > ROSSBY_SATURATION { // Matt et al. 2015, Eq. 6
+        if self.rossby > ROSSBY_SATURATION {
+            // Matt et al. 2015, Eq. 6
             -gamma
                 * (self.convective_turnover_time / self.convective_turnover_time_sun).powi(2)
                 * (self.spin / SOLAR_ANGULAR_VELOCITY).powi(3)
-        } else { // Matt et al. 2015, Eq. 7
+        } else {
+            // Matt et al. 2015, Eq. 7
             -gamma * (ROSSBY_SUN / ROSSBY_SATURATION).powi(2) * (self.spin / SOLAR_ANGULAR_VELOCITY)
         }
     }

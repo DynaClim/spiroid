@@ -23,6 +23,7 @@ With all effects enabled, `spiroid` can simulate between `2e6` and `2e7` years p
 ### Requirements
 
 - Rust: [see rustup](https://www.rustup.rs/)
+- python3:  [see uv](https://docs.astral.sh/uv/getting-started/installation/) (optional, only for data pre- and post-processing)
 
 Clone the repository, build, and install:
 
@@ -165,6 +166,8 @@ Additional fields, only required by MESA data files:
 - `convective_turnover_time` (seconds)
 - `mass_loss_rate ` mass loss rate during the evolved phase (solar mass / year)
 
+A script is included to help clean and convert raw MESA output files to CSV:
+`uv run scripts/convert_mesa_to_csv.py`
 
 ### Magnetism (`Particle`)
 Magnetic interaction (initiated by the star) can be toggled into the following states:

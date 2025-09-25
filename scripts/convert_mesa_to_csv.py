@@ -1,9 +1,18 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "mesa-reader",
+#     "numpy",
+#     "pandas",
+#     "steda",
+#     "tqdm",
+# ]
+# ///
+
 """This script processes stellar evolution data from MESA output into spiroid compatible CSV files.
 It reads the data, computes numerical derivatives for physical quantities,
 and filters out rows where changes are insignificant.
 """
-
-# TODO need to add requirements to a pyproject.toml
 
 import numpy as np
 import mesa_reader as mr

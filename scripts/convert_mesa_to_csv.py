@@ -34,9 +34,7 @@ def usage():
                     mesa_directory: path to your mesa directory to load the LOG file from""")
 
 
-# Load Mesa data
-# ---------------
-def loadMesa(log: mr.MesaLogDir, profile: int):
+def load_mesa(log: mr.MesaLogDir, profile: int):
     """Load the data from the mesa log files and the profile snapshot
 
     Args:
@@ -90,7 +88,7 @@ def loadMesa(log: mr.MesaLogDir, profile: int):
     lc = np.flip(p.mlt_mixing_length)  # cgs
     vc = np.flip(p.conv_vel)  # cgs
 
-    i_int_core, i_int_enve = calcTriLayer(N2, r, Rs)
+    i_int_core, i_int_enve = calculate_tri_layer(N2, r, Rs)
 
     Kt = np.where(
         r < r[i_int_core], Kt, 0.0
@@ -99,7 +97,7 @@ def loadMesa(log: mr.MesaLogDir, profile: int):
     return Ms, Rs, Ls, age, r, rho, mass, N, i_int_enve, i_int_core, lc, vc
 
 
-def calcTriLayer(N2, r, Rs):
+def calculate_tri_layer(N2, r, Rs):
     """Calculate the indices of the interfaces between convective and radiative zones
 
     Args:
@@ -221,7 +219,7 @@ def convert_values(mass, log):
             i_int_core,
             lc,
             vc,
-        ) = loadMesa(log, profile)
+        ) = load_mesa(log, profile)
 
         h = log.history_data
         Mdot = -h.data_at_model_number(

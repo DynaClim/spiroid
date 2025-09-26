@@ -9,7 +9,8 @@
 # ]
 # ///
 
-"""This script processes stellar evolution data from MESA output into spiroid compatible CSV files.
+"""
+This script processes stellar evolution data from MESA output into spiroid compatible CSV files.
 It reads the data, computes numerical derivatives for physical quantities,
 and filters out rows where changes are insignificant.
 """
@@ -30,7 +31,7 @@ Lsun = L_sun.cgs.value  # Solar luminosity in CGS units
 
 def usage():
     print("""usage: convert_MESA_to_csv.py star_mass mesa_directory
-                    star_mass: float mass of star in Msun
+                    star_mass: mass of star in Msun
                     mesa_directory: path to your mesa directory to load the LOG file from""")
 
 
@@ -62,20 +63,14 @@ def load_mesa(log: mr.MesaLogDir, profile: int):
     p = log.profile_data(profile_number=profile)
 
     # Retreiving the mass and radius of the star at the given profile snapshot
-    Ms = (
-        h.data_at_model_number("star_mass", log.model_with_profile_number(profile))
-        * Msun
-    )  # cgs
-    Rs = (
-        h.data_at_model_number("radius", log.model_with_profile_number(profile)) * Rsun
-    )  # cgs
-    Ls = (
-        h.data_at_model_number("luminosity", log.model_with_profile_number(profile))
-        * Lsun
-    )  # cgs
-    age = h.data_at_model_number(
-        "star_age", log.model_with_profile_number(profile)
-    )  # yr
+    # cgs
+    Ms = h.data_at_model_number("star_mass", log.model_with_profile_number(profile)) * Msun
+    # cgs
+    Rs = h.data_at_model_number("radius", log.model_with_profile_number(profile)) * Rsun
+    # cgs
+    Ls = h.data_at_model_number("luminosity", log.model_with_profile_number(profile)) * Lsun
+    # year
+    age = h.data_at_model_number("star_age", log.model_with_profile_number(profile))
 
     # Retreiving the internal structure profiles for the given profile snapshot
     r = np.flip(p.rmid) * Rsun  # cgs
@@ -90,9 +85,8 @@ def load_mesa(log: mr.MesaLogDir, profile: int):
 
     i_int_core, i_int_enve = calculate_tri_layer(N2, r, Rs)
 
-    Kt = np.where(
-        r < r[i_int_core], Kt, 0.0
-    )  # Only take into account the radiative zone
+    # Only take into account the radiative zone
+    Kt = np.where(r < r[i_int_core], Kt, 0.0)
 
     return Ms, Rs, Ls, age, r, rho, mass, N, i_int_enve, i_int_core, lc, vc
 
@@ -109,54 +103,53 @@ def calculate_tri_layer(N2, r, Rs):
         Tuple[int, int]: indices of the interfaces between convective and radiative zones
     """
 
-    # Calculate the interaction layers
+    # calculate the interaction layers
     i_int_core, i_int_enve = 0, 0
     a = np.array(N2)
     asign = np.sign(a)
     asignroll = np.roll(asign, 1)
-    asignroll[0] = 1  # to catch if the core is convective or radiative
+    # to catch if the core is convective or radiative
+    asignroll[0] = 1
     signchange = ((asignroll - asign) != 0).astype(int)
     where = np.where(signchange == 1)[0]
-    if len(where) == 0:  # fully convective
+    # fully convective
+    if len(where) == 0:
         i_int_enve = 0
         i_int_core = 0
-    elif where[0] == 0:  # radiative core
-        if len(where) == 1:  # fully radiative
+    # radiative core
+    elif where[0] == 0:
+        if len(where) == 1:
+            # fully radiative
             i_int_enve = len(r) - 1
             i_int_core = len(r) - 1
-        else:  # convective envelope
+        # convective envelope
+        else:
             i_int_enve = 0
             i_int_core = 0
-            for j in range(
-                1, len(where) - 1, 2
-            ):  # convective core should be larger than 1e-4 of the star
-                if (
-                    r[where[j]] > 1e-4 * Rs
-                    and (r[where[j + 1]] - r[where[j]]) / r[where[j]] > 0.3
-                ):
+            for j in range(1, len(where) - 1, 2):
+                # convective core should be larger than 1e-4 of the star
+                if r[where[j]] > 1e-4 * Rs and (r[where[j + 1]] - r[where[j]]) / r[where[j]] > 0.3:
                     i_int_enve = where[j]
                     break
-            for i in range(
-                j + 1, len(where), 2
-            ):  # take the first one that is not due to numerical instabilities
+            for i in range(j + 1, len(where), 2):
+                # take the first one that is not due to numerical instabilities
                 if (r[where[i]] - r[where[i - 1]]) / r[where[i]] > 0.4:
                     i_int_core = where[i]
                     break
-    else:  # convective core
+    # convective core
+    else:
         i_int_enve = 0
         i_int_core = 0
         where = list(where)
         where.append(len(r) - 1)
         i = 0
-        for i in range(
-            len(where) - 1, 1, -1
-        ):  # take the first one that is not due to numerical instabilities
+        for i in range(len(where) - 1, 1, -1):
+            # take the first one that is not due to numerical instabilities
             if (r[where[i]] - r[where[i - 1]]) / r[where[i - 1]] > 0.3:
                 if i % 2 == 1:
                     i = i - 1
-                for j in range(
-                    i, 0, -2
-                ):  # Take the first one inside the numerical instability
+                for j in range(i, 0, -2):
+                    # take the first one inside the numerical instability
                     if (r[where[j]] - r[where[j - 1]]) / r[where[j - 1]] > 0.3:
                         i = j
                         break
@@ -166,23 +159,19 @@ def calculate_tri_layer(N2, r, Rs):
                 break
         if i_int_core == 0:
             i_int_core = where[0]
-        for i in range(
-            i, 0, -2
-        ):  # take the first one that is not due to numerical instabilities
+        for i in range(i, 0, -2):
+            # take the first one that is not due to numerical instabilities
             if (r[where[i]] - r[where[i - 1]]) / r[where[i - 1]] > 0.3:
-                for j in range(
-                    i, 0, -2
-                ):  # check if there is a numerical instability in the shell
+                for j in range(i, 0, -2):
+                    # check if there is a numerical instability in the shell
                     if j > 1:
                         if (r[where[j - 1]] - r[where[j - 2]]) / r[where[j - 1]] > 0.3:
                             if j == 2:
-                                i_int_enve = where[
-                                    i - 1
-                                ]  # If j = 2, the numerical error was inside the convective shell
+                                # If j = 2, the numerical error was inside the convective shell
+                                i_int_enve = where[i - 1]
                             else:
-                                i_int_enve = where[
-                                    j - 1
-                                ]  # If j > 2, the numerical error was outside the convective shell
+                                # If j > 2, the numerical error was outside the convective shell
+                                i_int_enve = where[j - 1]
                             break
                     else:
                         i_int_enve = where[i - 1]
@@ -222,23 +211,22 @@ def convert_values(mass, log):
         ) = load_mesa(log, profile)
 
         h = log.history_data
-        Mdot = -h.data_at_model_number(
-            "star_mdot", log.model_with_profile_number(profile)
-        )
+        Mdot = -h.data_at_model_number("star_mdot", log.model_with_profile_number(profile))
 
-        # Calculate the convective turnover time throughout the convective envelope
+        # calculate the convective turnover time throughout the convective envelope
         if i_int_core < len(r) - 1 and i_int_core != 0:
-            # # Calculate the convective turnover time at the interface between the radiative core and convective envelope
+            # calculate the convective turnover time at the interface between the radiative core and convective envelope
             # option 1
             # filter = [i >= i_int_core and i < i_int_core+30 for i in range(len(r))]
             # filter[-1] = False
             # tc_out = abs(np.percentile(lc[filter]/vc[filter],50))
+
             # option 2
             # filter = [i >= i_int_core and N[i] == 0. for i in range(len(r))]
             # filter[-1] = False
             # tc_out = abs(np.percentile(lc[filter]/vc[filter],50))
 
-            # Calculate the convective turnover time at the center of the convective envelope
+            # calculate the convective turnover time at the center of the convective envelope
             i_cent = np.where(r >= 0.5 * (Rs + r[i_int_core]))[0][0]
             while (vc[i_cent] == 0.0 or N[i_cent] > 0.0) and i_cent > i_int_core:
                 i_cent -= 1  # go down until we find a convective point
@@ -249,13 +237,11 @@ def convert_values(mass, log):
         # adjusted_convective_mass = mass[i_int_core]/Ms
         # t_c_base_out = 10**(8.79 - 2. * abs(np.log10(adjusted_convective_mass))**(0.349) - 0.0194 * abs(np.log10(adjusted_convective_mass))**2 - 1.62 * min(np.log10(adjusted_convective_mass) + 8.55, 0.))
 
-        properties["age"][profile - 1] = age  # yr
+        properties["age"][profile - 1] = age  # year
         properties["radius"][profile - 1] = Rs / Rsun
         properties["mass"][profile - 1] = Ms / Msun
         properties["convective_radius"][profile - 1] = r[i_int_core] / Rsun
-        properties["radiative_mass"][profile - 1] = (
-            (mass[i_int_core]) / Msun
-        )  # MESA radiative mass
+        properties["radiative_mass"][profile - 1] = (mass[i_int_core]) / Msun  # MESA radiative mass
         integrand = rho * r**4
         properties["radiative_moment_of_inertia"][profile - 1] = max(
             8 * np.pi / 3 * np.trapezoid(integrand[:i_int_core], r[:i_int_core]),
@@ -273,25 +259,23 @@ def convert_values(mass, log):
 
 
 def save_mesa_to_csv(mass, df):
+    """Save the MESA data as CSV, ready for spiroid."""
     output_csv = f"./examples/data/star/evolution/mesa_{10*mass:02.0f}.csv"
     df.to_csv(output_csv, index=False)
 
 
 def filter_values(df):
-    # The goal is to reduce the dataset size by keeping only rows with meaningful evolution,
-    # reducing computational cost for models that use this data.
-    # The filtered data is then saved back to the original CSV file location.
+    """Reduce the dataset size by keeping only rows with meaningful evolution."""
 
-    periods = len(df) // 100  # Adjust the period based on the length of the DataFrame
+    # Adjust the period based on the length of the DataFrame
+    periods = len(df) // 100
 
     # Compute numerical derivatives for all columns except the first, with respect to the index
     derivatives = df.iloc[:, 1:].diff(periods=periods)
     derivatives.columns = [f"d_{col}/d_index" for col in df.columns[1:]]
 
     # Exclude convective_turnover_time from filtering criteria
-    columns = [
-        col for col in derivatives.columns if col[2:-8] != "convective_turnover_time"
-    ]
+    columns = [col for col in derivatives.columns if col[2:-8] != "convective_turnover_time"]
 
     # Calculate the maximum relative derivative for each row
     maxderiv = np.zeros(len(derivatives))
@@ -305,19 +289,17 @@ def filter_values(df):
         )
 
     keep_indices = maxderiv > 0.001
-    keep_indices[:periods] = True  # Always keep the first 'periods' rows
+    # Always keep the first 'periods' rows
+    keep_indices[:periods] = True
     for i in range(periods, len(derivatives)):
-        if (
-            np.sum(keep_indices[i - periods : i]) == 0
-        ):  # Ensure at least one row is kept in each segment
+        # Ensure at least one row is kept in each segment
+        if np.sum(keep_indices[i - periods : i]) == 0:
             keep_indices[i] = True
 
     # Filter the DataFrame and recompute derivatives for the filtered data
     filtered_df = df.iloc[keep_indices].reset_index(drop=True)
     filtered_derivatives = filtered_df.iloc[:, 1:].diff(periods=periods)
-    filtered_derivatives.columns = [
-        f"d_{col}/d_index" for col in filtered_df.columns[1:]
-    ]
+    filtered_derivatives.columns = [f"d_{col}/d_index" for col in filtered_df.columns[1:]]
     filtered_maxderiv = np.zeros(len(filtered_derivatives))
     for i in range(len(filtered_derivatives)):
         filtered_maxderiv[i] = max(

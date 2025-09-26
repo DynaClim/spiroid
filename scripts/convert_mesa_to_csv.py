@@ -4,6 +4,7 @@
 #     "mesa-reader",
 #     "numpy",
 #     "pandas",
+#     "astropy",
 #     "tqdm",
 # ]
 # ///
@@ -84,6 +85,7 @@ def loadMesa(log: mr.MesaLogDir, profile: int):
 
     return Ms, Rs, Ls, age, r, rho, mass, N, i_int_enve, i_int_core, lc, vc
 
+
 def calcTriLayer(N2, r, Rs):
     """ Calculate the indices of the interfaces between convective and radiative zones
 
@@ -154,6 +156,7 @@ def calcTriLayer(N2, r, Rs):
 
     return i_int_core, i_int_enve
 
+
 def convert_values(mass, log):
     properties = {
         "age": np.zeros(len(log.profile_numbers)),
@@ -221,10 +224,10 @@ def convert_values(mass, log):
         )  # MESA radiative mass
         integrand = rho * r**4
         properties["radiative_moment_of_inertia"][profile - 1] = max(
-            8 * np.pi / 3 * np.trapz(integrand[:i_int_core], r[:i_int_core]), 1e44 * 1e7
+            8 * np.pi / 3 * np.trapezoid(integrand[:i_int_core], r[:i_int_core]), 1e44 * 1e7
         ) / (Ms * Rs**2)
         properties["convective_moment_of_inertia"][profile - 1] = max(
-            8 * np.pi / 3 * np.trapz(integrand[i_int_core:], r[i_int_core:]), 1e44 * 1e7
+            8 * np.pi / 3 * np.trapezoid(integrand[i_int_core:], r[i_int_core:]), 1e44 * 1e7
         ) / (Ms * Rs**2)
         properties["luminosity"][profile - 1] = Ls / Lsun
         properties["convective_turnover_time"][profile - 1] = tc_out
@@ -234,11 +237,11 @@ def convert_values(mass, log):
 
 
 def save_mesa_to_csv(mass, df):
-    output_csv = f"../examples/data/star/evolution/mesa_{10*mass:02.0f}.csv"
+    output_csv = f"./examples/data/star/evolution/mesa_{10*mass:02.0f}.csv"
     df.to_csv(output_csv, index=False)
 
 
-def filter_values(mass, df):
+def filter_values(df):
     # The goal is to reduce the dataset size by keeping only rows with meaningful evolution,
     # reducing computational cost for models that use this data.
     # The filtered data is then saved back to the original CSV file location.
@@ -289,22 +292,20 @@ def filter_values(mass, df):
             ]
         )
 
-    # Save the filtered DataFrame back to the original CSV file location
-    output_csv = f"../examples/data/star/evolution/mesa_{10*mass:02.0f}.csv"
-    filtered_df.to_csv(output_csv, index=False)
+    return df
 
 
 def main():
     if len(sys.argv) != 3:
         usage()
         exit()
-    elif len(sys.argv) == 2:
-        mesa_dir = sys.argv[1]
+    elif len(sys.argv) == 3:
+        mass = float(sys.argv[1])
+        mesa_dir = sys.argv[2]
         mesa_file = os.path.join(mesa_dir, "LOGS")
         log = mr.MesaLogDir(mesa_file, memoize_profiles=False)
-        mass = float(sys.argv[2])
         df = convert_values(mass, log)
-        df = filter_values(mass, df)
+        df = filter_values(df)
         save_mesa_to_csv(mass, df)
 
 

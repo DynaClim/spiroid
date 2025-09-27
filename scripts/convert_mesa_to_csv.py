@@ -86,17 +86,12 @@ def load_mesa(log: mr.MesaLogDir, profile: int):
     mass = np.flip(profile.mass) * SOLAR_MASS_CGS
     bv_frequency_2 = np.flip(profile.brunt_N2)
     bv_frequency = np.sqrt(np.where(bv_frequency_2 < 0, 0, bv_frequency_2))
-    # Kt = np.flip(profile.thermal_diffusivity)
-    # Kt = np.where(bv_frequency_2 < 0, 0, Kt)
     mixing_length = np.flip(profile.mlt_mixing_length)
     convective_velocity = np.flip(profile.conv_vel)
 
     convective_envelope_interface_i, radiative_envelope_interface_i = calculate_tri_layer(
         bv_frequency_2, radius, star_radius
     )
-
-    # Only take into account the radiative zone
-    # Kt = np.where(radius < radius[convective_envelope_interface_i], Kt, 0.0)
 
     return (
         star_mass,
@@ -257,16 +252,6 @@ def convert_values(mass, log):
             convective_envelope_interface_i < len(radius) - 1
             and convective_envelope_interface_i != 0
         ):
-            # calculate the convective turnover time at the interface between the radiative core and convective envelope
-
-            # option 1
-            # filter = [i >= convective_envelope_interface_i and i < convective_envelope_interface_i + 30 for i in range(len(radius))]
-            # option 2
-            # filter = [i >= convective_envelope_interface_i and bv_frequency[i] == 0. for i in range(len(radius))]
-
-            # filter[-1] = False
-            # tc_out = abs(np.percentile(mixing_length[filter] / convective_velocity[filter], 50))
-
             # calculate the convective turnover time at the center of the convective envelope
             i_cent = np.where(
                 radius >= 0.5 * (star_radius + radius[convective_envelope_interface_i])
@@ -279,9 +264,6 @@ def convert_values(mass, log):
             tc_out = mixing_length[i_cent] / convective_velocity[i_cent]
         else:
             tc_out = 1e99
-
-        # adjusted_convective_mass = mass[convective_envelope_interface_i] / star_mass
-        # t_c_base_out = 10**(8.79 - 2. * abs(np.log10(adjusted_convective_mass))**(0.349) - 0.0194 * abs(np.log10(adjusted_convective_mass))**2 - 1.62 * min(np.log10(adjusted_convective_mass) + 8.55, 0.))
 
         index = profile - 1
         star["age"][index] = star_age

@@ -11,8 +11,7 @@
 
 """
 This script processes stellar evolution data from MESA output into spiroid compatible CSV files.
-It reads the data, computes numerical derivatives for physical quantities,
-and filters out rows where changes are insignificant.
+It computes numerical derivatives for physical quantities and filters out rows where changes are insignificant.
 """
 
 import numpy as np
@@ -24,15 +23,15 @@ import sys
 
 from astropy.constants import R_sun, M_sun, L_sun
 
-Rsun = R_sun.cgs.value  # Solar radius in CGS units
-Msun = M_sun.cgs.value  # Solar mass in CGS units
-Lsun = L_sun.cgs.value  # Solar luminosity in CGS units
+SOLAR_RADIUS_CGS = R_sun.cgs.value  # Solar radius in CGS units
+SOLAR_MASS_CGS = M_sun.cgs.value  # Solar mass in CGS units
+SOLAR_LUMINOSITY_CGS = L_sun.cgs.value  # Solar luminosity in CGS units
 
 
 def usage():
     print("""usage: convert_MESA_to_csv.py star_mass mesa_directory
-                    star_mass: mass of star in Msun
-                    mesa_directory: path to your mesa directory to load the LOG file from""")
+                    star_mass (float): mass of star in SOLAR_MASS_CGS
+                    mesa_directory (string): path to your mesa directory to load the LOG file from""")
 
 
 def load_mesa(log: mr.MesaLogDir, profile: int):
@@ -42,146 +41,184 @@ def load_mesa(log: mr.MesaLogDir, profile: int):
         log (MesaLogDir): directory to the mesa log files
         profile (int): profile number
 
+
+    Units: star_age in years, others in CGS units
+
     Returns:
         Tuple:
-            Ms (float): Mass of the star
-            Rs (float): Radius of the star
-            Ls (float): Luminosity of the star
-            age (float): Age of the star
-            r (NDArray[single]): radius of the datapoints from the stellar evolution simulation
-            rho (NDArray[single]): density of the datapoints from the stellar evolution simulation
+            star_mass (float): Mass of the star
+            star_radius (float): Radius of the star
+            star_luminosity (float): Luminosity of the star
+            star_age (float): Age of the star in years
+            radius (NDArray[single]): radius of the datapoints from the stellar evolution simulation
+            density (NDArray[single]): density of the datapoints from the stellar evolution simulation
             mass (NDArray[single]): mass inside the sphere of the datapoints from the stellar evolution simulation
-            N (NDArray[single]): Brunt-Väisälä frequency of the datapoints from the stellar evolution simulation
-            i_int_enve (float): index of the interface of the convective to the radiative zone (convective core radiative envelope)
-            i_int_core (float): index of the interface of the convective to the radiative zone (radiative core convective envelope)
-            lc (NDArray[single]): mixing length of the datapoints from the stellar evolution simulation
-            vc (NDArray[single]): convective velocity of the datapoints from the stellar evolution
+            bv_frequency (NDArray[single]): Brunt-Väisälä frequency of the datapoints from the stellar evolution simulation
+            radiative_envelope_interface_i (float): index of the interface of the convective to the radiative zone (convective core radiative envelope)
+            convective_envelope_interface_i (float): index of the interface of the convective to the radiative zone (radiative core convective envelope)
+            mixing_length (NDArray[single]): mixing length of the datapoints from the stellar evolution simulation
+            convective_velocity (NDArray[single]): convective velocity of the datapoints from the stellar evolution
     """
 
     # Setting the mesa log director
-    h = log.history_data
-    p = log.profile_data(profile_number=profile)
+    history = log.history_data
+    profile = log.profile_data(profile_number=profile)
 
     # Retreiving the mass and radius of the star at the given profile snapshot
-    # cgs
-    Ms = h.data_at_model_number("star_mass", log.model_with_profile_number(profile)) * Msun
-    # cgs
-    Rs = h.data_at_model_number("radius", log.model_with_profile_number(profile)) * Rsun
-    # cgs
-    Ls = h.data_at_model_number("luminosity", log.model_with_profile_number(profile)) * Lsun
-    # year
-    age = h.data_at_model_number("star_age", log.model_with_profile_number(profile))
+    star_mass = (
+        history.data_at_model_number("star_mass", log.model_with_profile_number(profile))
+        * SOLAR_MASS_CGS
+    )
+    star_radius = (
+        history.data_at_model_number("radius", log.model_with_profile_number(profile))
+        * SOLAR_RADIUS_CGS
+    )
+    star_luminosity = (
+        history.data_at_model_number("luminosity", log.model_with_profile_number(profile))
+        * SOLAR_LUMINOSITY_CGS
+    )
+    star_age = history.data_at_model_number("star_age", log.model_with_profile_number(profile))
 
     # Retreiving the internal structure profiles for the given profile snapshot
-    r = np.flip(p.rmid) * Rsun  # cgs
-    rho = np.flip(p.rho)  # cgs
-    mass = np.flip(p.mass) * Msun  # cgs
-    N2 = np.flip(p.brunt_N2)  # cgs
-    N = np.sqrt(np.where(N2 < 0, 0, N2))  # cgs
-    Kt = np.flip(p.thermal_diffusivity)  # cgs
-    Kt = np.where(N2 < 0, 0, Kt)  # cgs
-    lc = np.flip(p.mlt_mixing_length)  # cgs
-    vc = np.flip(p.conv_vel)  # cgs
+    # All in CGS units
+    radius = np.flip(profile.rmid) * SOLAR_RADIUS_CGS
+    density = np.flip(profile.rho)
+    mass = np.flip(profile.mass) * SOLAR_MASS_CGS
+    bv_frequency_2 = np.flip(profile.brunt_N2)
+    bv_frequency = np.sqrt(np.where(bv_frequency_2 < 0, 0, bv_frequency_2))
+    # Kt = np.flip(profile.thermal_diffusivity)
+    # Kt = np.where(bv_frequency_2 < 0, 0, Kt)
+    mixing_length = np.flip(profile.mlt_mixing_length)
+    convective_velocity = np.flip(profile.conv_vel)
 
-    i_int_core, i_int_enve = calculate_tri_layer(N2, r, Rs)
+    convective_envelope_interface_i, radiative_envelope_interface_i = calculate_tri_layer(
+        bv_frequency_2, radius, star_radius
+    )
 
     # Only take into account the radiative zone
-    Kt = np.where(r < r[i_int_core], Kt, 0.0)
+    # Kt = np.where(radius < radius[convective_envelope_interface_i], Kt, 0.0)
 
-    return Ms, Rs, Ls, age, r, rho, mass, N, i_int_enve, i_int_core, lc, vc
+    return (
+        star_mass,
+        star_radius,
+        star_luminosity,
+        star_age,
+        radius,
+        density,
+        mass,
+        bv_frequency,
+        radiative_envelope_interface_i,
+        convective_envelope_interface_i,
+        mixing_length,
+        convective_velocity,
+    )
 
 
-def calculate_tri_layer(N2, r, Rs):
+def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     """Calculate the indices of the interfaces between convective and radiative zones
 
     Args:
-        N2 (NDArray[single]): squared Brunt-Väisälä frequency
-        r (NDArray[single]): radius of the datapoints
-        Rs (float): radius of the star
+        bv_frequency_2 (NDArray[single]): squared Brunt-Väisälä frequency
+        radius (NDArray[single]): radius of the datapoints
+        star_radius (float): radius of the star
 
     Returns:
         Tuple[int, int]: indices of the interfaces between convective and radiative zones
     """
 
     # calculate the interaction layers
-    i_int_core, i_int_enve = 0, 0
-    a = np.array(N2)
-    asign = np.sign(a)
-    asignroll = np.roll(asign, 1)
+    radiative_envelope_interface_i = 0
+    convective_envelope_interface_i = 0
+
+    sign = np.sign(np.array(bv_frequency_2))
+    signroll = np.roll(sign, 1)
     # to catch if the core is convective or radiative
-    asignroll[0] = 1
-    signchange = ((asignroll - asign) != 0).astype(int)
-    where = np.where(signchange == 1)[0]
+    signroll[0] = 1
+    sign_compare = ((signroll - sign) != 0).astype(int)
+    # check where the sign of the bv_frequency_2 changes
+    sign_change = np.where(sign_compare == 1)[0]
     # fully convective
-    if len(where) == 0:
-        i_int_enve = 0
-        i_int_core = 0
+    if len(sign_change) == 0:
+        # indices already zero-initialised
+        pass
     # radiative core
-    elif where[0] == 0:
-        if len(where) == 1:
-            # fully radiative
-            i_int_enve = len(r) - 1
-            i_int_core = len(r) - 1
+    elif sign_change[0] == 0:
+        # fully radiative
+        if len(sign_change) == 1:
+            radiative_envelope_interface_i = len(radius) - 1
+            convective_envelope_interface_i = len(radius) - 1
         # convective envelope
         else:
-            i_int_enve = 0
-            i_int_core = 0
-            for j in range(1, len(where) - 1, 2):
+            for j in range(1, len(sign_change) - 1, 2):
                 # convective core should be larger than 1e-4 of the star
-                if r[where[j]] > 1e-4 * Rs and (r[where[j + 1]] - r[where[j]]) / r[where[j]] > 0.3:
-                    i_int_enve = where[j]
+                if (
+                    radius[sign_change[j]] > 1e-4 * star_radius
+                    and (radius[sign_change[j + 1]] - radius[sign_change[j]])
+                    / radius[sign_change[j]]
+                    > 0.3
+                ):
+                    radiative_envelope_interface_i = sign_change[j]
                     break
-            for i in range(j + 1, len(where), 2):
+            for i in range(j + 1, len(sign_change), 2):
                 # take the first one that is not due to numerical instabilities
-                if (r[where[i]] - r[where[i - 1]]) / r[where[i]] > 0.4:
-                    i_int_core = where[i]
+                if (radius[sign_change[i]] - radius[sign_change[i - 1]]) / radius[
+                    sign_change[i]
+                ] > 0.4:
+                    convective_envelope_interface_i = sign_change[i]
                     break
     # convective core
     else:
-        i_int_enve = 0
-        i_int_core = 0
-        where = list(where)
-        where.append(len(r) - 1)
-        i = 0
-        for i in range(len(where) - 1, 1, -1):
+        sign_change = list(sign_change)
+        sign_change.append(len(radius) - 1)
+        for i in range(len(sign_change) - 1, 1, -1):
             # take the first one that is not due to numerical instabilities
-            if (r[where[i]] - r[where[i - 1]]) / r[where[i - 1]] > 0.3:
+            if (radius[sign_change[i]] - radius[sign_change[i - 1]]) / radius[
+                sign_change[i - 1]
+            ] > 0.3:
                 if i % 2 == 1:
                     i = i - 1
                 for j in range(i, 0, -2):
                     # take the first one inside the numerical instability
-                    if (r[where[j]] - r[where[j - 1]]) / r[where[j - 1]] > 0.3:
+                    if (radius[sign_change[j]] - radius[sign_change[j - 1]]) / radius[
+                        sign_change[j - 1]
+                    ] > 0.3:
                         i = j
                         break
                     else:
                         i = j - 2
-                i_int_core = where[i]
+                convective_envelope_interface_i = sign_change[i]
                 break
-        if i_int_core == 0:
-            i_int_core = where[0]
+        if convective_envelope_interface_i == 0:
+            convective_envelope_interface_i = sign_change[0]
+
         for i in range(i, 0, -2):
             # take the first one that is not due to numerical instabilities
-            if (r[where[i]] - r[where[i - 1]]) / r[where[i - 1]] > 0.3:
+            if (radius[sign_change[i]] - radius[sign_change[i - 1]]) / radius[
+                sign_change[i - 1]
+            ] > 0.3:
                 for j in range(i, 0, -2):
                     # check if there is a numerical instability in the shell
                     if j > 1:
-                        if (r[where[j - 1]] - r[where[j - 2]]) / r[where[j - 1]] > 0.3:
+                        if (radius[sign_change[j - 1]] - radius[sign_change[j - 2]]) / radius[
+                            sign_change[j - 1]
+                        ] > 0.3:
                             if j == 2:
                                 # If j = 2, the numerical error was inside the convective shell
-                                i_int_enve = where[i - 1]
+                                radiative_envelope_interface_i = sign_change[i - 1]
                             else:
                                 # If j > 2, the numerical error was outside the convective shell
-                                i_int_enve = where[j - 1]
+                                radiative_envelope_interface_i = sign_change[j - 1]
                             break
                     else:
-                        i_int_enve = where[i - 1]
+                        radiative_envelope_interface_i = sign_change[i - 1]
                         break
 
-    return i_int_core, i_int_enve
+    return convective_envelope_interface_i, radiative_envelope_interface_i
 
 
 def convert_values(mass, log):
-    properties = {
+    """Convert the values from raw MESA output into a dataframe matching the CSV struture, in SI units."""
+    star = {
         "age": np.zeros(len(log.profile_numbers)),
         "radius": np.zeros(len(log.profile_numbers)),
         "mass": np.zeros(len(log.profile_numbers)),
@@ -196,66 +233,91 @@ def convert_values(mass, log):
 
     for profile in tqdm(log.profile_numbers):
         (
-            Ms,
-            Rs,
-            Ls,
-            age,
-            r,
-            rho,
+            star_mass,
+            star_radius,
+            star_luminosity,
+            star_age,
+            radius,
+            density,
             mass,
-            N,
-            i_int_enve,
-            i_int_core,
-            lc,
-            vc,
+            bv_frequency,
+            radiative_envelope_interface_i,
+            convective_envelope_interface_i,
+            mixing_length,
+            convective_velocity,
         ) = load_mesa(log, profile)
 
-        h = log.history_data
-        Mdot = -h.data_at_model_number("star_mdot", log.model_with_profile_number(profile))
+        history = log.history_data
+        mass_flow_rate = -history.data_at_model_number(
+            "star_mdot", log.model_with_profile_number(profile)
+        )
 
         # calculate the convective turnover time throughout the convective envelope
-        if i_int_core < len(r) - 1 and i_int_core != 0:
+        if (
+            convective_envelope_interface_i < len(radius) - 1
+            and convective_envelope_interface_i != 0
+        ):
             # calculate the convective turnover time at the interface between the radiative core and convective envelope
-            # option 1
-            # filter = [i >= i_int_core and i < i_int_core+30 for i in range(len(r))]
-            # filter[-1] = False
-            # tc_out = abs(np.percentile(lc[filter]/vc[filter],50))
 
+            # option 1
+            # filter = [i >= convective_envelope_interface_i and i < convective_envelope_interface_i + 30 for i in range(len(radius))]
             # option 2
-            # filter = [i >= i_int_core and N[i] == 0. for i in range(len(r))]
+            # filter = [i >= convective_envelope_interface_i and bv_frequency[i] == 0. for i in range(len(radius))]
+
             # filter[-1] = False
-            # tc_out = abs(np.percentile(lc[filter]/vc[filter],50))
+            # tc_out = abs(np.percentile(mixing_length[filter] / convective_velocity[filter], 50))
 
             # calculate the convective turnover time at the center of the convective envelope
-            i_cent = np.where(r >= 0.5 * (Rs + r[i_int_core]))[0][0]
-            while (vc[i_cent] == 0.0 or N[i_cent] > 0.0) and i_cent > i_int_core:
-                i_cent -= 1  # go down until we find a convective point
-            tc_out = lc[i_cent] / vc[i_cent]
+            i_cent = np.where(
+                radius >= 0.5 * (star_radius + radius[convective_envelope_interface_i])
+            )[0][0]
+            while (
+                convective_velocity[i_cent] == 0.0 or bv_frequency[i_cent] > 0.0
+            ) and i_cent > convective_envelope_interface_i:
+                # go down until we find a convective point
+                i_cent -= 1
+            tc_out = mixing_length[i_cent] / convective_velocity[i_cent]
         else:
             tc_out = 1e99
 
-        # adjusted_convective_mass = mass[i_int_core]/Ms
+        # adjusted_convective_mass = mass[convective_envelope_interface_i] / star_mass
         # t_c_base_out = 10**(8.79 - 2. * abs(np.log10(adjusted_convective_mass))**(0.349) - 0.0194 * abs(np.log10(adjusted_convective_mass))**2 - 1.62 * min(np.log10(adjusted_convective_mass) + 8.55, 0.))
 
-        properties["age"][profile - 1] = age  # year
-        properties["radius"][profile - 1] = Rs / Rsun
-        properties["mass"][profile - 1] = Ms / Msun
-        properties["convective_radius"][profile - 1] = r[i_int_core] / Rsun
-        properties["radiative_mass"][profile - 1] = (mass[i_int_core]) / Msun  # MESA radiative mass
-        integrand = rho * r**4
-        properties["radiative_moment_of_inertia"][profile - 1] = max(
-            8 * np.pi / 3 * np.trapezoid(integrand[:i_int_core], r[:i_int_core]),
+        index = profile - 1
+        star["age"][index] = star_age
+        star["radius"][index] = star_radius / SOLAR_RADIUS_CGS
+        star["mass"][index] = star_mass / SOLAR_MASS_CGS
+        star["convective_radius"][index] = (
+            radius[convective_envelope_interface_i] / SOLAR_RADIUS_CGS
+        )
+        # MESA radiative mass
+        star["radiative_mass"][index] = (mass[convective_envelope_interface_i]) / SOLAR_MASS_CGS
+        integrand = density * radius**4
+        star["radiative_moment_of_inertia"][index] = max(
+            8
+            * np.pi
+            / 3
+            * np.trapezoid(
+                integrand[:convective_envelope_interface_i],
+                radius[:convective_envelope_interface_i],
+            ),
             1e44 * 1e7,
-        ) / (Ms * Rs**2)
-        properties["convective_moment_of_inertia"][profile - 1] = max(
-            8 * np.pi / 3 * np.trapezoid(integrand[i_int_core:], r[i_int_core:]),
+        ) / (star_mass * star_radius**2)
+        star["convective_moment_of_inertia"][index] = max(
+            8
+            * np.pi
+            / 3
+            * np.trapezoid(
+                integrand[convective_envelope_interface_i:],
+                radius[convective_envelope_interface_i:],
+            ),
             1e44 * 1e7,
-        ) / (Ms * Rs**2)
-        properties["luminosity"][profile - 1] = Ls / Lsun
-        properties["convective_turnover_time"][profile - 1] = tc_out
-        properties["mass_loss_rate"][profile - 1] = Mdot
+        ) / (star_mass * star_radius**2)
+        star["luminosity"][index] = star_luminosity / SOLAR_LUMINOSITY_CGS
+        star["convective_turnover_time"][index] = tc_out
+        star["mass_loss_rate"][index] = mass_flow_rate
 
-    return pd.DataFrame(properties)
+    return pd.DataFrame(star)
 
 
 def save_mesa_to_csv(mass, df):
@@ -278,9 +340,9 @@ def filter_values(df):
     columns = [col for col in derivatives.columns if col[2:-8] != "convective_turnover_time"]
 
     # Calculate the maximum relative derivative for each row
-    maxderiv = np.zeros(len(derivatives))
+    derivative_max = np.zeros(len(derivatives))
     for i in range(len(derivatives)):
-        maxderiv[i] = max(
+        derivative_max[i] = max(
             [
                 abs(derivatives[col][i] / df[col[2:-8]][i])
                 for col in columns
@@ -288,7 +350,7 @@ def filter_values(df):
             ]
         )
 
-    keep_indices = maxderiv > 0.001
+    keep_indices = derivative_max > 0.001
     # Always keep the first 'periods' rows
     keep_indices[:periods] = True
     for i in range(periods, len(derivatives)):
@@ -300,9 +362,9 @@ def filter_values(df):
     filtered_df = df.iloc[keep_indices].reset_index(drop=True)
     filtered_derivatives = filtered_df.iloc[:, 1:].diff(periods=periods)
     filtered_derivatives.columns = [f"d_{col}/d_index" for col in filtered_df.columns[1:]]
-    filtered_maxderiv = np.zeros(len(filtered_derivatives))
+    filtered_derivative_max = np.zeros(len(filtered_derivatives))
     for i in range(len(filtered_derivatives)):
-        filtered_maxderiv[i] = max(
+        filtered_derivative_max[i] = max(
             [
                 abs(filtered_derivatives[col][i] / filtered_df[col[2:-8]][i])
                 for col in columns
@@ -314,16 +376,32 @@ def filter_values(df):
 
 
 def main():
+    # user must provide star_mass and mesa_file_path
     if len(sys.argv) != 3:
         usage()
         exit()
     elif len(sys.argv) == 3:
-        mass = float(sys.argv[1])
-        mesa_dir = sys.argv[2]
-        mesa_file = os.path.join(mesa_dir, "LOGS")
+        # convert the star mass to numeric float
+        try:
+            mass = float(sys.argv[1])
+        except ValueError:
+            print(f"invalid mass: {sys.argv[1]}")
+            usage()
+            exit()
+
+        # load the mesa log file
+        mesa_file = os.path.join(sys.argv[2], "LOGS")
+        if not os.path.isfile(mesa_file):
+            print(f"invalid file path: {sys.argv[2]}")
+            usage()
+            exit()
         log = mr.MesaLogDir(mesa_file, memoize_profiles=False)
+
+        # conver the units and data format
         df = convert_values(mass, log)
+        # remove data points that are insiginificant
         df = filter_values(df)
+        # write out the CSV data file
         save_mesa_to_csv(mass, df)
 
 

@@ -58,6 +58,8 @@ def effect_setup():
         "STAR_TIDES_ENABLED": [True, False],
         # Kaula planetary tides
         "PLANET_TIDES_ENABLED": [False],
+        # Disable wind for testing conservation of angular momentum
+        "WIND_ENABLED": [True],
     }
 
     return effects
@@ -74,7 +76,7 @@ def planet_setup(effects):
         "radius": [3.255e7],
         # m (from AU)
         "semi_major_axis": [AU * x for x in [0.019]],
-        "magnetic_field": [None], # Do not edit.
+        "magnetic_field": [None],  # Do not edit.
     }
 
     if effects["MAGNETIC_EFFECT_ENABLED"]:
@@ -116,12 +118,11 @@ def star_setup(effects):
     ####################### STAR SETUP ###########################
     ##############################################################
     star_base = {
-        "mass": [None], # Do not edit.
+        "mass": [None],  # Do not edit.
         # rad.s-1
         "spin": [5.194e-05],
         # seconds (from years)
         "core_envelope_coupling_constant": [SECONDS_IN_YEAR * x for x in [1.171e7]],
-
         "footpoint_conductance": [None],  # Do not edit.
         "evolution": [None],  # Do not edit.
         "sigma_bar": [None],  # Do not edit.
@@ -129,13 +130,13 @@ def star_setup(effects):
 
     if effects["MAGNETIC_EFFECT_ENABLED"]:
         # Ohm-1
-        star_base["footpoint_conductance"] =  [5.8e4]
+        star_base["footpoint_conductance"] = [5.8e4]
 
     if effects["STAR_EVOLUTION_ENABLED"]:
         star_base["evolution"] = [
             {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_08.csv"}},
             {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_09.csv"}},
-            {"Mesa": {"star_file_path": "examples/data/star/evolution/mesa_10.csv"}}
+            {"Mesa": {"star_file_path": "examples/data/star/evolution/mesa_10.csv"}},
         ]
     else:
         # Set the initial star values that would otherwise be provided by savgol/mesa data if evolution were enabled.
@@ -154,7 +155,6 @@ def star_setup(effects):
     return star_base
 
 
-
 def integrator_setup():
     ##############################################################
     #################### INTEGRATOR SETUP ########################
@@ -169,7 +169,7 @@ def integrator_setup():
             "absolute_tolerance": SECONDS_IN_YEAR * 1e6,
             "relative_tolerance": 1.15,
             "incremental_scaling_factor": 0.002,
-            "decremental_scaling_factor": 0.0
+            "decremental_scaling_factor": 0.0,
         }
     }
 
@@ -181,7 +181,6 @@ def integrator_setup():
             "max_integration_steps": 100000000,
             # Uncomment the entire solution_output for Dense output
             "solution_output": filter,
-
         }
     }
 
@@ -218,12 +217,10 @@ def integrator_setup():
     }
 
     # Uncomment only the desired integrator.
-#    return odex
-#    return odex_kaula
+    # return odex
+    # return odex_kaula
     return dopri853
 
 
 if __name__ == "__main__":
-    make_configs(
-        simulator_setup, effect_setup, planet_setup, star_setup, integrator_setup
-    )
+    make_configs(simulator_setup, effect_setup, planet_setup, star_setup, integrator_setup)

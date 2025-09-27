@@ -47,9 +47,7 @@ def _construct_key(previous_key, separator, new_key, replace_separators=None):
         return new_key
 
 
-def flatten(
-    nested_dict, separator="_", root_keys_to_ignore=None, replace_separators=None
-):
+def flatten(nested_dict, separator="_", root_keys_to_ignore=None, replace_separators=None):
     """
     Flattens a dictionary with nested structure to a dictionary with no
     hierarchy
@@ -105,9 +103,7 @@ def flatten(
             for index, item in enumerate(object_):
                 _flatten(
                     item,
-                    _construct_key(
-                        key, separator, index, replace_separators=replace_separators
-                    ),
+                    _construct_key(key, separator, index, replace_separators=replace_separators),
                 )
         # Anything left take as is
         else:

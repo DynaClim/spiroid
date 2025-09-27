@@ -57,7 +57,7 @@ from units import (
 def parse_values(file_path):
     print(f"reading data file: {file_path}")
     if file_path.endswith(".jsonl.lz4"):
-        data = lz4tools.open(file_path).read().split(b'\n')
+        data = lz4tools.open(file_path).read().split(b"\n")
         return parse_jsonl(data)
     if file_path.endswith(".jsonl"):
         with open(file_path, "r") as data:
@@ -90,7 +90,6 @@ def parse_jsonl(data):
 
             # Convert units for specific values.
             value = convert_units(key, value)
-
 
             if key in dict:
                 dict[key].append(value)
@@ -200,9 +199,7 @@ def create_subplots(x_label, y_labels, data):
 
 def main():
     if len(sys.argv) < 2:
-        print(
-            "usage: plotter.py input_data [input_data1] [input_data2] [...] output_path"
-        )
+        print("usage: plotter.py input_data [input_data1] [input_data2] [...] output_path")
         exit()
     elif len(sys.argv) == 2:
         output_path = None

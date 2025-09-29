@@ -34,12 +34,12 @@ def usage():
                     mesa_directory (string): path to your mesa directory to load the LOG file from""")
 
 
-def load_mesa(log: mr.MesaLogDir, profile: int):
+def load_mesa(log: mr.MesaLogDir, profile_number: int):
     """Load the data from the mesa log files and the profile snapshot
 
     Args:
         log (MesaLogDir): directory to the mesa log files
-        profile (int): profile number
+        profile_number (int): profile number
 
 
     Units: star_age in years, others in CGS units
@@ -54,30 +54,32 @@ def load_mesa(log: mr.MesaLogDir, profile: int):
             density (NDArray[single]): density of the datapoints from the stellar evolution simulation
             mass (NDArray[single]): mass inside the sphere of the datapoints from the stellar evolution simulation
             bv_frequency (NDArray[single]): Brunt-Väisälä frequency of the datapoints from the stellar evolution simulation
-            radiative_envelope_interface_i (float): index of the interface of the convective to the radiative zone (convective core radiative envelope)
-            convective_envelope_interface_i (float): index of the interface of the convective to the radiative zone (radiative core convective envelope)
+            radiative_envelope_interface_i (int): index of the interface of the convective to the radiative zone (convective core radiative envelope)
+            convective_envelope_interface_i (int): index of the interface of the convective to the radiative zone (radiative core convective envelope)
             mixing_length (NDArray[single]): mixing length of the datapoints from the stellar evolution simulation
             convective_velocity (NDArray[single]): convective velocity of the datapoints from the stellar evolution
     """
 
     # Setting the mesa log director
     history = log.history_data
-    profile = log.profile_data(profile_number=profile)
+    profile = log.profile_data(profile_number=profile_number)
 
     # Retreiving the mass and radius of the star at the given profile snapshot
     star_mass = (
-        history.data_at_model_number("star_mass", log.model_with_profile_number(profile))
+        history.data_at_model_number("star_mass", log.model_with_profile_number(profile_number))
         * SOLAR_MASS_CGS
     )
     star_radius = (
-        history.data_at_model_number("radius", log.model_with_profile_number(profile))
+        history.data_at_model_number("radius", log.model_with_profile_number(profile_number))
         * SOLAR_RADIUS_CGS
     )
     star_luminosity = (
-        history.data_at_model_number("luminosity", log.model_with_profile_number(profile))
+        history.data_at_model_number("luminosity", log.model_with_profile_number(profile_number))
         * SOLAR_LUMINOSITY_CGS
     )
-    star_age = history.data_at_model_number("star_age", log.model_with_profile_number(profile))
+    star_age = history.data_at_model_number("star_age", log.model_with_profile_number(profile_number))
+
+    star_mass_loss_rate = -history.data_at_model_number("star_mdot", log.model_with_profile_number(profile_number))
 
     # Retreiving the internal structure profiles for the given profile snapshot
     # All in CGS units
@@ -98,6 +100,7 @@ def load_mesa(log: mr.MesaLogDir, profile: int):
         star_radius,
         star_luminosity,
         star_age,
+        star_mass_loss_rate,
         radius,
         density,
         mass,
@@ -165,6 +168,7 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     else:
         sign_change = list(sign_change)
         sign_change.append(len(radius) - 1)
+        i=0
         for i in range(len(sign_change) - 1, 1, -1):
             # take the first one that is not due to numerical instabilities
             if (radius[sign_change[i]] - radius[sign_change[i - 1]]) / radius[
@@ -185,7 +189,6 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
                 break
         if convective_envelope_interface_i == 0:
             convective_envelope_interface_i = sign_change[0]
-
         for i in range(i, 0, -2):
             # take the first one that is not due to numerical instabilities
             if (radius[sign_change[i]] - radius[sign_change[i - 1]]) / radius[
@@ -232,6 +235,7 @@ def convert_values(mass, log):
             star_radius,
             star_luminosity,
             star_age,
+            star_mass_loss_rate,
             radius,
             density,
             mass,
@@ -241,11 +245,6 @@ def convert_values(mass, log):
             mixing_length,
             convective_velocity,
         ) = load_mesa(log, profile)
-
-        history = log.history_data
-        mass_flow_rate = -history.data_at_model_number(
-            "star_mdot", log.model_with_profile_number(profile)
-        )
 
         # calculate the convective turnover time throughout the convective envelope
         if (
@@ -297,7 +296,7 @@ def convert_values(mass, log):
         ) / (star_mass * star_radius**2)
         star["luminosity"][index] = star_luminosity / SOLAR_LUMINOSITY_CGS
         star["convective_turnover_time"][index] = tc_out
-        star["mass_loss_rate"][index] = mass_flow_rate
+        star["mass_loss_rate"][index] = star_mass_loss_rate
 
     return pd.DataFrame(star)
 
@@ -373,13 +372,13 @@ def main():
 
         # load the mesa log file
         mesa_file = os.path.join(sys.argv[2], "LOGS")
-        if not os.path.isfile(mesa_file):
-            print(f"invalid file path: {sys.argv[2]}")
+        if not os.path.isdir(mesa_file):
+            print(f"invalid directory path: {sys.argv[2]}")
             usage()
             exit()
         log = mr.MesaLogDir(mesa_file, memoize_profiles=False)
 
-        # conver the units and data format
+        # convert the units and data format
         df = convert_values(mass, log)
         # remove data points that are insiginificant
         df = filter_values(df)

@@ -77,9 +77,13 @@ def load_mesa(log: mr.MesaLogDir, profile_number: int):
         history.data_at_model_number("luminosity", log.model_with_profile_number(profile_number))
         * SOLAR_LUMINOSITY_CGS
     )
-    star_age = history.data_at_model_number("star_age", log.model_with_profile_number(profile_number))
+    star_age = history.data_at_model_number(
+        "star_age", log.model_with_profile_number(profile_number)
+    )
 
-    star_mass_loss_rate = -history.data_at_model_number("star_mdot", log.model_with_profile_number(profile_number))
+    star_mass_loss_rate = -history.data_at_model_number(
+        "star_mdot", log.model_with_profile_number(profile_number)
+    )
 
     # Retreiving the internal structure profiles for the given profile snapshot
     # All in CGS units
@@ -118,7 +122,7 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     Args:
         bv_frequency_2 (NDArray[single]): squared Brunt-Väisälä frequency
         radius (NDArray[single]): radius of the datapoints
-        star_radius (float): radius of the star
+        star_mass (float): mass of the star, only used for naming the output files
 
     Returns:
         Tuple[int, int]: indices of the interfaces between convective and radiative zones
@@ -168,7 +172,6 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     else:
         sign_change = list(sign_change)
         sign_change.append(len(radius) - 1)
-        i=0
         for i in range(len(sign_change) - 1, 1, -1):
             # take the first one that is not due to numerical instabilities
             if (radius[sign_change[i]] - radius[sign_change[i - 1]]) / radius[
@@ -214,7 +217,7 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     return convective_envelope_interface_i, radiative_envelope_interface_i
 
 
-def convert_values(mass, log):
+def convert_values(log):
     """Convert the values from raw MESA output into a dataframe matching the CSV struture, in SI units."""
     star = {
         "age": np.zeros(len(log.profile_numbers)),
@@ -301,12 +304,6 @@ def convert_values(mass, log):
     return pd.DataFrame(star)
 
 
-def save_mesa_to_csv(mass, df):
-    """Save the MESA data as CSV, ready for spiroid."""
-    output_csv = f"./examples/data/star/evolution/mesa_{10*mass:02.0f}.csv"
-    df.to_csv(output_csv, index=False)
-
-
 def filter_values(df):
     """Reduce the dataset size by keeping only rows with meaningful evolution."""
 
@@ -356,8 +353,14 @@ def filter_values(df):
     return df
 
 
+def save_mesa_to_csv(mass, df):
+    """Save the MESA data as CSV, ready for spiroid."""
+    output_csv = f"./examples/data/star/evolution/mesa_{10*mass:02.0f}.csv"
+    df.to_csv(output_csv, index=False)
+
+
 def main():
-    # user must provide star_mass and mesa_file_path
+    # user must provide star_mass and mesa_dir_path
     if len(sys.argv) != 3:
         usage()
         exit()
@@ -371,15 +374,15 @@ def main():
             exit()
 
         # load the mesa log file
-        mesa_file = os.path.join(sys.argv[2], "LOGS")
-        if not os.path.isdir(mesa_file):
+        mesa_dir = os.path.join(sys.argv[2], "LOGS")
+        if not os.path.isdir(mesa_dir):
             print(f"invalid directory path: {sys.argv[2]}")
             usage()
             exit()
-        log = mr.MesaLogDir(mesa_file, memoize_profiles=False)
+        log = mr.MesaLogDir(mesa_dir, memoize_profiles=False)
 
         # convert the units and data format
-        df = convert_values(mass, log)
+        df = convert_values(log)
         # remove data points that are insiginificant
         df = filter_values(df)
         # write out the CSV data file

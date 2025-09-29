@@ -30,8 +30,7 @@ SOLAR_LUMINOSITY_CGS = L_sun.cgs.value  # Solar luminosity in CGS units
 
 def usage():
     print("""usage: convert_MESA_to_csv.py star_mass mesa_directory
-                    star_mass (float): mass of star in SOLAR_MASS_CGS
-                    mesa_directory (string): path to your mesa directory to load the LOG file from""")
+       mesa_directory (string): path to your mesa directory to load the LOGS from""")
 
 
 def load_mesa(log: mr.MesaLogDir, profile_number: int):
@@ -122,7 +121,7 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     Args:
         bv_frequency_2 (NDArray[single]): squared Brunt-Väisälä frequency
         radius (NDArray[single]): radius of the datapoints
-        star_mass (float): mass of the star, only used for naming the output files
+        star_radius (float): radius of the star
 
     Returns:
         Tuple[int, int]: indices of the interfaces between convective and radiative zones
@@ -172,6 +171,7 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     else:
         sign_change = list(sign_change)
         sign_change.append(len(radius) - 1)
+        i = 0
         for i in range(len(sign_change) - 1, 1, -1):
             # take the first one that is not due to numerical instabilities
             if (radius[sign_change[i]] - radius[sign_change[i - 1]]) / radius[
@@ -353,30 +353,22 @@ def filter_values(df):
     return df
 
 
-def save_mesa_to_csv(mass, df):
+def save_mesa_to_csv(df):
     """Save the MESA data as CSV, ready for spiroid."""
-    output_csv = f"./examples/data/star/evolution/mesa_{10*mass:02.0f}.csv"
+    output_csv = f"./examples/data/star/evolution/mesa_{10*df.mass[0]:02.0f}.csv"
     df.to_csv(output_csv, index=False)
 
 
 def main():
     # user must provide star_mass and mesa_dir_path
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         usage()
         exit()
-    elif len(sys.argv) == 3:
-        # convert the star mass to numeric float
-        try:
-            mass = float(sys.argv[1])
-        except ValueError:
-            print(f"invalid mass: {sys.argv[1]}")
-            usage()
-            exit()
-
+    elif len(sys.argv) == 2:
         # load the mesa log file
-        mesa_dir = os.path.join(sys.argv[2], "LOGS")
+        mesa_dir = os.path.join(sys.argv[1], "LOGS")
         if not os.path.isdir(mesa_dir):
-            print(f"invalid directory path: {sys.argv[2]}")
+            print(f"invalid directory path: {sys.argv[1]}")
             usage()
             exit()
         log = mr.MesaLogDir(mesa_dir, memoize_profiles=False)
@@ -386,7 +378,7 @@ def main():
         # remove data points that are insiginificant
         df = filter_values(df)
         # write out the CSV data file
-        save_mesa_to_csv(mass, df)
+        save_mesa_to_csv(df)
 
 
 if __name__ == "__main__":

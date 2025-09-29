@@ -171,6 +171,8 @@ def calculate_tri_layer(bv_frequency_2, radius, star_radius):
     else:
         sign_change = list(sign_change)
         sign_change.append(len(radius) - 1)
+        # When len(sign_change) is too low, the loop will not be executed.
+        # So i must be initialised to zero as is reused in the next loop.
         i = 0
         for i in range(len(sign_change) - 1, 1, -1):
             # take the first one that is not due to numerical instabilities

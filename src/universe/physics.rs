@@ -133,7 +133,7 @@ fn planet_eccentricity_derivative(planet: &Planet, star: &Star, kaula: &Kaula) -
             * (planet.radius.powi(5) / planet.semi_major_axis.powf(6.5))
             * (star.mass / planet.mass)
             * planet.semi_minor_axis_ratio
-            * kaula.summation_of_longitudinal_modes_eccentricity(planet.semi_minor_axis_ratio)
+            * kaula.summation_of_longitudinal_modes_eccentricity()
     }
 }
 
@@ -147,7 +147,7 @@ fn planet_inclination_derivative(planet: &Planet, star: &Star, kaula: &Kaula) ->
         (1. / planet.sin_inc)
             * (star.mass / planet.mass)
             * (planet.radius / planet.semi_major_axis).powi(5)
-            * kaula.summation_of_longitudinal_modes_inclination(planet)
+            * kaula.summation_of_longitudinal_modes_inclination()
     }
 }
 

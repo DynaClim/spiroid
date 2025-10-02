@@ -85,6 +85,12 @@ impl ParticleT for Planet {
     fn luminosity(&self) -> f64 {
         self.luminosity
     }
+    fn moment_of_inertia(&self) -> f64 {
+        self.moment_of_inertia
+    }
+    fn reduced_mass(&self) -> f64 {
+        self.reduced_mass
+    }
 }
 
 impl Planet {

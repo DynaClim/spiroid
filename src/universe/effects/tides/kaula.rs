@@ -9,7 +9,17 @@ use love_number::{LoveNumber, ParticleComposition};
 use polynomials::Polynomials;
 
 use crate::universe::particles::{ParticleT, Planet};
-use crate::utils::{factorial, kronecker_delta};
+
+// Upper and lower bound for the m, p, q summation.
+// Calculated at each time step, based on inclination and eccentricity.
+struct Mpq {
+    m_min: u8,
+    m_max: u8,
+    p_min: u8,
+    p_max: u8,
+    q_min: u8,
+    q_max: u8,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 #[serde(default)]
@@ -22,13 +32,21 @@ pub struct Kaula {
     #[serde(skip)]
     love_number: LoveNumber,
 
-    //cache
+    // cache
     #[serde(skip)]
     sum_over_m_real_2pq_2mp_dt: f64,
+    #[serde(skip)]
+    sum_over_m_real_2pq_dt_2mp: f64,
     #[serde(skip)]
     sum_over_m_imaginary_mfactor: f64,
     #[serde(skip)]
     sum_over_m_imaginary_pfactor: f64,
+    #[serde(skip)]
+    sum_over_m_imaginary_qfactor: f64,
+    #[serde(skip)]
+    sum_over_m_imaginary_eccentricity: f64,
+    #[serde(skip)]
+    sum_over_m_imaginary_inclination: f64,
 }
 
 impl Kaula {
@@ -80,6 +98,23 @@ impl Kaula {
             .init(&love_ocean[0], &love_ocean[1]);
     }
 
+    fn bound_q_by_eccentricity(eccentricity: f64) -> (u8, u8) {
+        match () {
+            // Select the order of the summation q over the eccentricity function G_lpq
+            () if (eccentricity > 0.30) => (0, 15), // q: -7 <= q <= 7
+            () if (eccentricity > 0.25) => (1, 14), // q: -6 <= q <= 6
+            () if (eccentricity > 0.20) => (2, 13), // q: -5 <= q <= 5
+            () if (eccentricity > 0.15) => (3, 12), // q: -4 <= q <= 4
+            () if (eccentricity > 1e-8) => (5, 10), // q: -2 <= q <= 2
+            () if (eccentricity > 0.0) => (6, 9),   // q: -1 <= q <= 1
+            () if (eccentricity == 0.0) => (7, 8),  // q:  0 <= q <= 0
+            () => unreachable!("eccentricity cannot be negative."),
+        }
+    }
+
+    // All the calculations using the polynomials and love number are performed here
+    // and stored in the `sum_over_xxx` caches.
+    // The caches are used when the derivitaves are calculated for each keplerian element.
     pub(crate) fn refresh(
         &mut self,
         time: f64,
@@ -88,22 +123,113 @@ impl Kaula {
     ) -> Result<()> {
         self.polynomials
             .refresh_cache(planet.eccentricity(), planet.inclination());
-        self.love_number
-            .refresh_cache(time, planet, star, &self.particle_type)?;
+        let (q_min, q_max) = Self::bound_q_by_eccentricity(planet.eccentricity());
 
-        if planet.inclination() != 0.0 {
-            self.sum_over_m_real_2pq_2mp_dt = self.sum_over_m_real(
-                &self.polynomials.eccentricity_2pq_squared,
-                &self.polynomials.inclination_2mp_squared_derivative,
-            );
-            self.sum_over_m_imaginary_mfactor = self.sum_over_m_imaginary_mfactor(
-                &self.polynomials.eccentricity_2pq_squared,
-                &self.polynomials.inclination_2mp_squared,
-            );
-            self.sum_over_m_imaginary_pfactor = self.sum_over_m_imaginary_pfactor(
-                &self.polynomials.eccentricity_2pq_squared,
-                &self.polynomials.inclination_2mp_squared,
-            );
+        if planet.inclination() <= 1e-8 {
+            // If inclination is close to zero, only compute
+            // m = 0, p = 1 and m = 2, p = 0
+            let mpq_01q = Mpq {
+                m_min: 0,
+                m_max: 1,
+                p_min: 1,
+                p_max: 2,
+                q_min,
+                q_max,
+            };
+
+            let mpq_20q = Mpq {
+                m_min: 2,
+                m_max: 3,
+                p_min: 0,
+                p_max: 1,
+                q_min,
+                q_max,
+            };
+
+            self.love_number
+                .refresh_cache(time, planet, star, &self.particle_type, &mpq_01q)?;
+
+            self.love_number
+                .refresh_cache(time, planet, star, &self.particle_type, &mpq_20q)?;
+
+            self.sum_over_m_imaginary_mfactor = self.sum_over_m_imaginary_mfactor(&mpq_01q)
+                + self.sum_over_m_imaginary_mfactor(&mpq_20q);
+            self.sum_over_m_imaginary_qfactor = self.sum_over_m_imaginary_qfactor(&mpq_01q)
+                + self.sum_over_m_imaginary_qfactor(&mpq_20q);
+
+            if planet.eccentricity() != 0.0 {
+                self.sum_over_m_imaginary_eccentricity = self
+                    .sum_over_m_imaginary_eccentricity(planet, &mpq_01q)
+                    + self.sum_over_m_imaginary_eccentricity(planet, &mpq_20q);
+                self.sum_over_m_real_2pq_dt_2mp = self.sum_over_m_real(
+                    &self.polynomials.eccentricity_2pq_squared_derivative,
+                    &self.polynomials.inclination_2mp_squared,
+                    &mpq_01q,
+                ) + self.sum_over_m_real(
+                    &self.polynomials.eccentricity_2pq_squared_derivative,
+                    &self.polynomials.inclination_2mp_squared,
+                    &mpq_20q,
+                );
+            }
+
+            if planet.inclination() != 0.0 {
+                self.sum_over_m_imaginary_pfactor = self.sum_over_m_imaginary_pfactor(&mpq_01q)
+                    + self.sum_over_m_imaginary_pfactor(&mpq_20q);
+                self.sum_over_m_real_2pq_2mp_dt = self.sum_over_m_real(
+                    &self.polynomials.eccentricity_2pq_squared,
+                    &self.polynomials.inclination_2mp_squared_derivative,
+                    &mpq_01q,
+                ) + self.sum_over_m_real(
+                    &self.polynomials.eccentricity_2pq_squared,
+                    &self.polynomials.inclination_2mp_squared_derivative,
+                    &mpq_20q,
+                );
+            }
+
+            if sin!(planet.inclination()) != 0.0 {
+                self.sum_over_m_imaginary_inclination = self
+                    .sum_over_m_imaginary_inclination(planet, &mpq_01q)
+                    + self.sum_over_m_imaginary_inclination(planet, &mpq_20q);
+            }
+        } else {
+            let mpq = Mpq {
+                m_min: 0,
+                m_max: 3,
+                p_min: 0,
+                p_max: 3,
+                q_min,
+                q_max,
+            };
+
+            self.love_number
+                .refresh_cache(time, planet, star, &self.particle_type, &mpq)?;
+
+            self.sum_over_m_imaginary_mfactor = self.sum_over_m_imaginary_mfactor(&mpq);
+            self.sum_over_m_imaginary_qfactor = self.sum_over_m_imaginary_qfactor(&mpq);
+
+            if planet.eccentricity() != 0.0 {
+                self.sum_over_m_imaginary_eccentricity =
+                    self.sum_over_m_imaginary_eccentricity(planet, &mpq);
+                self.sum_over_m_real_2pq_dt_2mp = self.sum_over_m_real(
+                    &self.polynomials.eccentricity_2pq_squared_derivative,
+                    &self.polynomials.inclination_2mp_squared,
+                    &mpq,
+                );
+            }
+
+            if planet.inclination() != 0.0 {
+                self.sum_over_m_imaginary_pfactor = self.sum_over_m_imaginary_pfactor(&mpq);
+                self.sum_over_m_real_2pq_2mp_dt = self.sum_over_m_real(
+                    &self.polynomials.eccentricity_2pq_squared,
+                    &self.polynomials.inclination_2mp_squared_derivative,
+                    &mpq,
+                );
+            }
+
+            if sin!(planet.inclination()) != 0.0 {
+                self.sum_over_m_imaginary_inclination =
+                    self.sum_over_m_imaginary_inclination(planet, &mpq);
+            }
         }
 
         Ok(())
@@ -115,35 +241,17 @@ impl Kaula {
     // Summation over longitudinal modes m for the computation of the semi-major-axis derivative.
     // Boue & Efroimksy (2019) Eq 116 and Revol et al. (2023) Eq A.1.
     pub(crate) fn summation_of_longitudinal_modes_semi_major_axis(&self) -> f64 {
-        let outer = &self.polynomials.inclination_2mp_squared;
-        let inner = &self.polynomials.eccentricity_2pq_squared;
-
-        let mut sum_over_m = 0.0;
-        for (m, m_val) in outer.iter().enumerate() {
-            let mut sum_over_p = 0.0;
-            for (p, p_val) in inner.iter().enumerate() {
-                let mut sum_over_q = 0.0;
-                let p_factor = (2 - 2 * (p as isize)) as f64;
-                for (q, q_val) in p_val.iter().enumerate() {
-                    let q_factor = p_factor + (q as f64 - 7.);
-                    let imk2 = self.love_number.imaginary(m, p, q);
-                    sum_over_q += q_factor * q_val * imk2;
-                }
-                sum_over_p += m_val[p] * sum_over_q;
-            }
-            sum_over_m +=
-                sum_over_p * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0));
-        }
-        sum_over_m
+        self.sum_over_m_imaginary_qfactor
     }
 
     // Summation over longitudinal modes m for the computation of the spin derivative.
     // Boue & Efroimksy (2019) Eq 123 and Revol et al. (2023) Eq A.3
     pub(crate) fn summation_of_longitudinal_modes_spin(&self) -> f64 {
-        self.sum_over_m_imaginary_mfactor(
-            &self.polynomials.eccentricity_2pq_squared,
-            &self.polynomials.inclination_2mp_squared,
-        )
+        self.sum_over_m_imaginary_mfactor
+    }
+
+    pub(crate) fn summation_of_longitudinal_modes_eccentricity(&self) -> f64 {
+        self.sum_over_m_imaginary_eccentricity
     }
 
     // Wrapping and precision loss not applicable since the values are in [0..15).
@@ -151,31 +259,47 @@ impl Kaula {
     #[allow(clippy::cast_possible_wrap)]
     // Summation over longitudinal modes m for the computation of the eccentricity derivative.
     // Boue & Efroimksy (2019) Eq 117 and Revol et al. (2023) Eq A.3
-    pub(crate) fn summation_of_longitudinal_modes_eccentricity(
-        &self,
-        semi_minor_axis_ratio: f64,
-    ) -> f64 {
+    fn sum_over_m_imaginary_eccentricity(&self, planet: &impl ParticleT, mpq: &Mpq) -> f64 {
+        let semi_minor_axis_ratio = sqrt!(1. - planet.eccentricity().powi(2));
         let outer = &self.polynomials.inclination_2mp_squared;
         let inner = &self.polynomials.eccentricity_2pq_squared;
 
-        let mut sum_over_m = 0.0;
-        for (m, m_val) in outer.iter().enumerate() {
-            let mut sum_over_p = 0.0;
-            for (p, p_val) in inner.iter().enumerate() {
-                let mut sum_over_q = 0.0;
+        let mut m_sum = 0.0;
+        for (m, m_val) in outer
+            .iter()
+            .enumerate()
+            .take(mpq.m_max.into())
+            .skip(mpq.m_min.into())
+        {
+            let mut p_sum = 0.0;
+            for (p, p_val) in inner
+                .iter()
+                .enumerate()
+                .take(mpq.p_max.into())
+                .skip(mpq.p_min.into())
+            {
+                let mut q_sum = 0.0;
                 let p_factor = (2 - 2 * (p as isize)) as f64;
-                for (q, q_val) in p_val.iter().enumerate() {
+                for (q, q_val) in p_val
+                    .iter()
+                    .enumerate()
+                    .take(mpq.q_max.into())
+                    .skip(mpq.q_min.into())
+                {
                     let q_factor = p_factor + (q as f64 - 7.);
                     let term = q_factor * semi_minor_axis_ratio - p_factor;
                     let imk2 = self.love_number.imaginary(m, p, q);
-                    sum_over_q += imk2 * q_val * term;
+                    q_sum += imk2 * q_val * term;
                 }
-                sum_over_p += sum_over_q * m_val[p];
+                p_sum += q_sum * m_val[p];
             }
-            sum_over_m +=
-                sum_over_p * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0));
+            m_sum += p_sum * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0));
         }
-        sum_over_m
+        m_sum
+    }
+
+    pub(crate) fn summation_of_longitudinal_modes_inclination(&self) -> f64 {
+        self.sum_over_m_imaginary_inclination
     }
 
     // Wrapping and precision loss not applicable since the values are in [0..15).
@@ -183,34 +307,52 @@ impl Kaula {
     #[allow(clippy::cast_possible_wrap)]
     // Summation over longitudinal modes m for the computation of the inclination derivative.
     // by Boue & Efroimksy (2019) Eq 118 and Revol et al. (2023) Eq A.7
-    pub(crate) fn summation_of_longitudinal_modes_inclination(&self, planet: &Planet) -> f64 {
-        let term1 =
-            (planet.reduced_mass * planet.mean_motion.powi(2) * planet.semi_major_axis.powi(2))
-                / (planet.moment_of_inertia * planet.spin);
-        let term3 = planet.mean_motion / planet.semi_minor_axis_ratio;
+    fn sum_over_m_imaginary_inclination(&self, planet: &impl ParticleT, mpq: &Mpq) -> f64 {
+        let semi_minor_axis_ratio = sqrt!(1. - planet.eccentricity().powi(2));
+
+        let term1 = (planet.reduced_mass()
+            * planet.mean_motion().powi(2)
+            * planet.semi_major_axis().powi(2))
+            / (planet.moment_of_inertia() * planet.spin());
+        let term3 = planet.mean_motion() / semi_minor_axis_ratio;
+        let cos_inc = cos!(planet.inclination());
 
         let outer = &self.polynomials.inclination_2mp_squared;
         let inner = &self.polynomials.eccentricity_2pq_squared;
 
-        let mut sum_over_m = 0.0;
-        for (m, m_val) in outer.iter().enumerate() {
-            let mut sum_over_p = 0.0;
-            for (p, p_val) in inner.iter().enumerate() {
-                let mut sum_over_q = 0.0;
+        let mut m_sum = 0.0;
+        for (m, m_val) in outer
+            .iter()
+            .enumerate()
+            .take(mpq.m_max.into())
+            .skip(mpq.m_min.into())
+        {
+            let mut p_sum = 0.0;
+            for (p, p_val) in inner
+                .iter()
+                .enumerate()
+                .take(mpq.p_max.into())
+                .skip(mpq.p_min.into())
+            {
+                let mut q_sum = 0.0;
                 let p_factor = (2 - 2 * (p as isize)) as f64;
-                for (q, q_val) in p_val.iter().enumerate() {
+                for (q, q_val) in p_val
+                    .iter()
+                    .enumerate()
+                    .take(mpq.q_max.into())
+                    .skip(mpq.q_min.into())
+                {
                     let imk2 = self.love_number.imaginary(m, p, q);
-                    sum_over_q += imk2 * q_val;
+                    q_sum += imk2 * q_val;
                 }
-                sum_over_p += sum_over_q
+                p_sum += q_sum
                     * m_val[p]
-                    * (term1 * (m as f64 * planet.cos_inc - p_factor)
-                        - ((p_factor * planet.cos_inc - m as f64) * term3));
+                    * (term1 * (m as f64 * cos_inc - p_factor)
+                        - ((p_factor * cos_inc - m as f64) * term3));
             }
-            sum_over_m +=
-                sum_over_p * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0));
+            m_sum += p_sum * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0));
         }
-        sum_over_m
+        m_sum
     }
 
     fn summation_of_longitudinal_modes_triple_common(
@@ -272,11 +414,7 @@ impl Kaula {
                 * planet.semi_major_axis.powi(2)
                 * planet.eccentricity
                 * planet.reduced_mass);
-        self.sum_over_m_real(
-            &self.polynomials.eccentricity_2pq_squared_derivative,
-            &self.polynomials.inclination_2mp_squared,
-        ) * 0.5
-            * term2
+        self.sum_over_m_real_2pq_dt_2mp * 0.5 * term2
     }
 
     // Summation over longitudinal modes m for the computation of the inclination dependent longitude of pericentre derivative.
@@ -297,14 +435,30 @@ impl Kaula {
 
     // Iteration over the provided 2D arrays (outer 3x15 and inner 3x3), summing the contents of:
     // (love_number(m, p, q) * inner[p][q]) * outer[m]p] * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0))
-    fn sum_over_m_real(&self, inner: &[[f64; 15]; 3], outer: &[[f64; 3]; 3]) -> f64 {
+    fn sum_over_m_real(&self, inner: &[[f64; 15]; 3], outer: &[[f64; 3]; 3], mpq: &Mpq) -> f64 {
         let mut m_sum = 0.0;
-        for (m, m_val) in outer.iter().enumerate() {
+        for (m, m_val) in outer
+            .iter()
+            .enumerate()
+            .take(mpq.m_max.into())
+            .skip(mpq.m_min.into())
+        {
             let mut p_sum = 0.0;
-            for (p, p_val) in inner.iter().enumerate() {
+            for (p, p_val) in inner
+                .iter()
+                .enumerate()
+                .take(mpq.p_max.into())
+                .skip(mpq.p_min.into())
+            {
                 let mut q_sum = 0.0;
-                for (q, q_val) in p_val.iter().enumerate() {
-                    q_sum += q_val * self.love_number.real(m, p, q);
+                for (q, q_val) in p_val
+                    .iter()
+                    .enumerate()
+                    .take(mpq.q_max.into())
+                    .skip(mpq.q_min.into())
+                {
+                    let rek2 = self.love_number.real(m, p, q);
+                    q_sum += rek2 * q_val;
                 }
                 p_sum += q_sum * m_val[p];
             }
@@ -316,15 +470,34 @@ impl Kaula {
     // Wrapping and precision loss not applicable since the values are in [0..15).
     #[allow(clippy::cast_precision_loss)]
     #[allow(clippy::cast_possible_wrap)]
-    fn sum_over_m_imaginary_pfactor(&self, inner: &[[f64; 15]; 3], outer: &[[f64; 3]; 3]) -> f64 {
+    fn sum_over_m_imaginary_pfactor(&self, mpq: &Mpq) -> f64 {
+        let outer = &self.polynomials.inclination_2mp_squared;
+        let inner = &self.polynomials.eccentricity_2pq_squared;
+
         let mut m_sum = 0.0;
-        for (m, m_val) in outer.iter().enumerate() {
+        for (m, m_val) in outer
+            .iter()
+            .enumerate()
+            .take(mpq.m_max.into())
+            .skip(mpq.m_min.into())
+        {
             let mut p_sum = 0.0;
-            for (p, p_val) in inner.iter().enumerate() {
+            for (p, p_val) in inner
+                .iter()
+                .enumerate()
+                .take(mpq.p_max.into())
+                .skip(mpq.p_min.into())
+            {
                 let mut q_sum = 0.0;
                 let p_factor = (2 - 2 * (p as isize)) as f64;
-                for (q, q_val) in p_val.iter().enumerate() {
-                    q_sum += q_val * self.love_number.imaginary(m, p, q) * p_factor;
+                for (q, q_val) in p_val
+                    .iter()
+                    .enumerate()
+                    .take(mpq.q_max.into())
+                    .skip(mpq.q_min.into())
+                {
+                    let imk2 = self.love_number.imaginary(m, p, q);
+                    q_sum += imk2 * q_val * p_factor;
                 }
                 p_sum += q_sum * m_val[p];
             }
@@ -335,14 +508,34 @@ impl Kaula {
 
     // Precision loss not applicable since the values are in [0..15).
     #[allow(clippy::cast_precision_loss)]
-    fn sum_over_m_imaginary_mfactor(&self, inner: &[[f64; 15]; 3], outer: &[[f64; 3]; 3]) -> f64 {
+    fn sum_over_m_imaginary_mfactor(&self, mpq: &Mpq) -> f64 {
+        let outer = &self.polynomials.inclination_2mp_squared;
+        let inner = &self.polynomials.eccentricity_2pq_squared;
+        // Skip over the case of m = 0.
+        let m_min = max!(1, mpq.m_min);
         let mut m_sum = 0.0;
-        for (m, m_val) in outer.iter().enumerate() {
+        for (m, m_val) in outer
+            .iter()
+            .enumerate()
+            .take(mpq.m_max.into())
+            .skip(m_min.into())
+        {
             let mut p_sum = 0.0;
-            for (p, p_val) in inner.iter().enumerate() {
+            for (p, p_val) in inner
+                .iter()
+                .enumerate()
+                .take(mpq.p_max.into())
+                .skip(mpq.p_min.into())
+            {
                 let mut q_sum = 0.0;
-                for (q, q_val) in p_val.iter().enumerate() {
-                    q_sum += q_val * self.love_number.imaginary(m, p, q);
+                for (q, q_val) in p_val
+                    .iter()
+                    .enumerate()
+                    .take(mpq.q_max.into())
+                    .skip(mpq.q_min.into())
+                {
+                    let imk2 = self.love_number.imaginary(m, p, q);
+                    q_sum += imk2 * q_val;
                 }
                 p_sum += q_sum * m_val[p];
             }
@@ -353,6 +546,59 @@ impl Kaula {
         }
         m_sum
     }
+
+    // Precision loss not applicable since the values are in [0..15).
+    #[allow(clippy::cast_precision_loss)]
+    #[allow(clippy::cast_possible_wrap)]
+    fn sum_over_m_imaginary_qfactor(&self, mpq: &Mpq) -> f64 {
+        let outer = &self.polynomials.inclination_2mp_squared;
+        let inner = &self.polynomials.eccentricity_2pq_squared;
+
+        let mut m_sum = 0.0;
+        for (m, m_val) in outer
+            .iter()
+            .enumerate()
+            .take(mpq.m_max.into())
+            .skip(mpq.m_min.into())
+        {
+            let mut p_sum = 0.0;
+            for (p, p_val) in inner
+                .iter()
+                .enumerate()
+                .take(mpq.p_max.into())
+                .skip(mpq.p_min.into())
+            {
+                let mut q_sum = 0.0;
+                let p_factor = (2 - 2 * (p as isize)) as f64;
+                for (q, q_val) in p_val
+                    .iter()
+                    .enumerate()
+                    .take(mpq.q_max.into())
+                    .skip(mpq.q_min.into())
+                {
+                    let q_factor = p_factor + (q as f64 - 7.);
+                    let imk2 = self.love_number.imaginary(m, p, q);
+                    q_sum += imk2 * q_val * q_factor;
+                }
+                p_sum += q_sum * m_val[p];
+            }
+            m_sum += p_sum * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0));
+        }
+        m_sum
+    }
+}
+
+// Precomputed factorials as f64 for 0..=4
+const FACTORIALS: &[f64] = &[1.0, 1.0, 2.0, 6.0, 24.0];
+
+pub(crate) fn factorial(x: usize) -> f64 {
+    FACTORIALS[x]
+}
+
+// x == y -> 1.0
+// x != y -> 0.0
+pub(crate) fn kronecker_delta(x: usize, y: usize) -> f64 {
+    f64!(x == y)
 }
 
 #[cfg(test)]

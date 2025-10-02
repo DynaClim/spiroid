@@ -154,8 +154,8 @@ pub fn test_polynomials() -> Polynomials {
 fn _inclination_polynomials() {
     let mut polynomials = Polynomials::default();
     let expected = test_polynomials();
-    let inclination = 0.35;
-    polynomials.inclination_polynomials(inclination);
+    let inclination: f64 = 0.35;
+    polynomials.inclination_polynomials(cos!(inclination), sin!(inclination));
     assert_eq!(
         expected.inclination_2mp_squared,
         polynomials.inclination_2mp_squared
@@ -166,8 +166,8 @@ fn _inclination_polynomials() {
 fn _inclination_polynomials_derivatives() {
     let mut polynomials = Polynomials::default();
     let expected = test_polynomials();
-    let inclination = 0.35;
-    polynomials.inclination_polynomials_derivatives(inclination);
+    let inclination: f64 = 0.35;
+    polynomials.inclination_polynomials_derivatives(cos!(inclination), sin!(inclination));
     assert_eq!(
         expected.inclination_2mp_squared_derivative,
         polynomials.inclination_2mp_squared_derivative

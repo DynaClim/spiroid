@@ -57,6 +57,8 @@ pub(crate) trait ParticleT {
     fn inclination(&self) -> f64;
     fn luminosity(&self) -> f64;
     fn mean_motion(&self) -> f64;
+    fn moment_of_inertia(&self) -> f64;
+    fn reduced_mass(&self) -> f64;
 }
 
 // https://en.wikipedia.org/wiki/Magnetic_pressure

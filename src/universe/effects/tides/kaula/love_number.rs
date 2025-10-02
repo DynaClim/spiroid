@@ -1,15 +1,15 @@
 use crate::constants::{
     GAS_CONSTANT, GRAVITATIONAL, PI, SECONDS_IN_DAY, SECONDS_IN_YEAR, SOLAR_LUMINOSITY,
 };
+use crate::universe::effects::tides::kaula::Mpq;
 use crate::universe::particles::ParticleT;
-use crate::utils::map_3d_to_1d;
 use sci_file::Interpolator;
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use anyhow::Result;
-use num_complex::Complex;
+use serde_big_array::BigArray;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum ParticleComposition {
@@ -45,11 +45,13 @@ pub enum ParticleComposition {
 }
 
 // Real and imaginary love numbers calculated each timestep.
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub(crate) struct LoveNumber {
     // Cache
-    real: Vec<f64>,
-    imaginary: Vec<f64>,
+    #[serde(with = "BigArray")]
+    real: [f64; 57],
+    #[serde(with = "BigArray")]
+    imaginary: [f64; 57],
 
     pub(crate) imaginary_atmosphere: Interpolator<f64>,
     pub(crate) imaginary_oceanic: Interpolator<f64>,
@@ -58,19 +60,78 @@ pub(crate) struct LoveNumber {
     love_interpolator: Vec<Interpolator<f64>>,
 }
 
+impl Default for LoveNumber {
+    fn default() -> Self {
+        Self {
+            real: [0.0; 57],
+            imaginary: [0.0; 57],
+            imaginary_atmosphere: Interpolator::new(),
+            imaginary_oceanic: Interpolator::new(),
+            imaginary_solid: Interpolator::new(),
+            real_solid: Interpolator::new(),
+            love_interpolator: vec![Interpolator::new()],
+        }
+    }
+}
+
 impl LoveNumber {
     /// Fetches the real love number from the cache for index of tuple (m, p, q).
     pub(crate) fn real(&self, m: usize, p: usize, q: usize) -> f64 {
         // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
-        // m_max and p_max are both 3
-        self.real[map_3d_to_1d(m, 3, p, 3, q)]
+        let index = Self::get_index(m, p, q);
+        self.real[index]
     }
 
-    /// Fetches the real love number from the cache for index of tuple (m, p, q).
+    /// Fetches the imaginary love number from the cache for index of tuple (m, p, q).
     pub(crate) fn imaginary(&self, m: usize, p: usize, q: usize) -> f64 {
         // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
-        // m_max and p_max are both 3
-        self.imaginary[map_3d_to_1d(m, 3, p, 3, q)]
+        let index = Self::get_index(m, p, q);
+        self.imaginary[index]
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
+    fn get_index(m: usize, p: usize, q: usize) -> usize {
+        // Truncation not applicable since the values are in [0..3).
+        let pq_fac = Self::pq_fac(p as u8, q as u8);
+        // Sign loss not applicable since the values are in [0..18]
+        // Convert pq_fac from -9..=9 to 0..18
+        let pq_fac = (pq_fac + 9) as usize;
+
+        // Convert from 2d index of q_fac, m to 1d index (19 is number of possible q_fac values)
+        pq_fac + m * 19
+    }
+
+    /// Sets the real and imaginary love number into the cache for index of tuple (m, p, q).
+    fn set_k2(&mut self, m: u8, p: u8, q: u8, real: f64, imaginary: f64) {
+        let index = Self::get_index(m.into(), p.into(), q.into());
+        self.real[index] = real;
+        self.imaginary[index] = imaginary;
+    }
+
+    fn clear_cache(&mut self) {
+        self.real.fill(0.0);
+        self.imaginary.fill(0.0);
+    }
+
+    fn pq_fac(p: u8, q: u8) -> i32 {
+        let p = i32::from(p);
+        // Convert q from 0..=14 to -7..=7
+        let q = i32::from(q) - 7;
+
+        2 - 2 * p + q
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn tidal_excitation_frequency_mode_sigma_2mpq(
+        planet: &impl ParticleT,
+        m: u8,
+        p: u8,
+        q: u8,
+    ) -> f64 {
+        let pq_fac = f64!(Self::pq_fac(p, q));
+        let m = f64!(m);
+        pq_fac * planet.mean_motion() - m * planet.spin()
     }
 
     /// Recomputes all the love number values.
@@ -81,73 +142,35 @@ impl LoveNumber {
         planet: &impl ParticleT,
         star: &impl ParticleT,
         particle_type: &ParticleComposition,
+        mpq: &Mpq,
     ) -> Result<()> {
-        self.real.clear();
-        self.imaginary.clear();
-
         let mut k2_re;
         let mut k2_im;
+        self.clear_cache();
 
         // This internal cache acts as an allocation free hash table, where the index (key) is derived from (q_fac, m) and value is the k2
-        //  for the relevant tidal frequency.
+        // for the relevant tidal frequency.
         // If the array value is zero, the cache is assumed to not been filled. Tidal frequency of zero is not calculated,
-        //  so the false cache miss is insignificant.
+        // so the (possible) false cache miss is insignificant.
         // There are 19 possible q_fac values (-9..=9) for each m value (0..=2)
-        // This cache means only 48 calculations are done for the full 135 (q = 15 * p = 3 * m = 3) iterations of the loop.
-        // It is 48 and not 57 because of the cases where m == 0 share a cache spot with other values, albeit with inverted sign
-        //  (which are adjusted for below).
-        let mut internal_cache = [Complex::from(0.); 19 * 3];
-        //        for q in 0..=14 {
-        for q in -7..=7 {
-            for p in 0..3 {
-                let q_fac: i32 = (2 - 2 * p) + q;
-                for m in 0..3 {
-                    // Loop is organised so arrays are filled in order: index == 0..=135
-                    // Cases where m is zero produce tidal frequencies that are already cached, except with the opposite sign.
-                    let (new_q_fac, invert) = {
-                        if m == 0 && q_fac.is_positive() {
-                            (-q_fac, true)
-                        } else {
-                            (q_fac, false)
-                        }
-                    };
-
-                    // Perform cache lookup
-                    // Sign loss not applicable since the values are in [-9..9]
-                    #[allow(clippy::cast_sign_loss)]
-                    let index = (new_q_fac + 9) as usize + m * 19;
-                    let k2 = internal_cache[index];
-
-                    // Truncation not applicable since the values are in [0..3).
-                    #[allow(clippy::cast_possible_truncation)]
-                    if k2 == Complex::from(0.) {
-                        // Cache miss
-                        let w_2lmpq = planet.mean_motion() * f64!(new_q_fac)
-                            - (planet.spin() * f64!(m as u32));
-
-                        // Compute k2
+        // This cache means only 57 calculations are done for the full 135 (q = 15 * p = 3 * m = 3) iterations of the loop.
+        for q in mpq.q_min..mpq.q_max {
+            for p in mpq.p_min..mpq.p_max {
+                for m in mpq.m_min..mpq.m_max {
+                    k2_re = self.real(m.into(), p.into(), q.into());
+                    k2_im = self.imaginary(m.into(), p.into(), q.into());
+                    if k2_re == 0.0 && k2_im == 0.0 {
+                        // Cache miss, compute k2
+                        let w_2lmpq =
+                            Self::tidal_excitation_frequency_mode_sigma_2mpq(planet, m, p, q);
                         k2_re = self.real_part(w_2lmpq, particle_type)?;
                         k2_im = self.imaginary_part(time, w_2lmpq, planet, star, particle_type)?;
-
                         // Add to cache
-                        internal_cache[index] = Complex::new(k2_re, k2_im);
-                    } else {
-                        // Cache hit
-                        k2_re = k2.re;
-                        k2_im = k2.im;
+                        self.set_k2(m, p, q, k2_re, k2_im);
                     }
-
-                    if invert {
-                        k2_im = -k2_im;
-                    }
-
-                    // Add to lookup tables
-                    self.real.push(k2_re);
-                    self.imaginary.push(k2_im);
                 }
             }
         }
-
         Ok(())
     }
 
@@ -208,21 +231,13 @@ impl LoveNumber {
     }
 
     fn imaginary_solid(&self, freq: f64) -> Result<f64> {
-        if freq == 0.0 {
-            Ok(0.0)
-        } else {
-            let (_, im_k2) = self.imaginary_solid.interpolate(abs!(freq))?;
-            Ok(freq.signum() * im_k2)
-        }
+        let (_, im_k2) = self.imaginary_solid.interpolate(abs!(freq))?;
+        Ok(freq.signum() * im_k2)
     }
 
     fn imaginary_oceanic(&self, freq: f64) -> Result<f64> {
-        if freq == 0.0 {
-            Ok(0.0)
-        } else {
-            let (_, im_k2) = self.imaginary_oceanic.interpolate(abs!(freq))?;
-            Ok(im_k2)
-        }
+        let (_, im_k2) = self.imaginary_oceanic.interpolate(abs!(freq))?;
+        Ok(im_k2)
     }
 
     // Love number data stored across multiple files 1.0, 1.1, 1.2, ..., 4.0

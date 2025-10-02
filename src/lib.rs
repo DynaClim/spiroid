@@ -6,7 +6,6 @@ pub use constants::*;
 pub use simulation::{Simulation, System};
 
 mod universe;
-mod utils;
 
 use universe::physics::force;
 pub use universe::{ParticleType, Planet, Star, StarCsv, Universe};

@@ -261,7 +261,6 @@ src
 │   │   └── star.rs
 │   └── particles.rs
 ├── universe.rs
-└── utils.rs
 ```
 
 - lib.rs: Specifies the structure of the `Universe` for the config file and implements the `Integrator::System` trait required by the integrator.
@@ -275,7 +274,6 @@ src
 - universe/particles/planet.rs: `Planet` model. 
 - universe/particles/star.rs: `Star` model. 
 - universe/particles/star/star_csv.rs: Structure of the stellar evolution CSV from `STAREVOL` or `MESA` models.
-- utils.rs: Misc helper functions, precomputed factorial, etc.
 
 # Known issues and limitations
 

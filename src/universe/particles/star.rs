@@ -120,6 +120,12 @@ impl ParticleT for Star {
     fn luminosity(&self) -> f64 {
         self.luminosity
     }
+    fn moment_of_inertia(&self) -> f64 {
+        todo!()
+    }
+    fn reduced_mass(&self) -> f64 {
+        todo!()
+    }
 }
 
 impl Star {
@@ -424,7 +430,6 @@ impl Star {
 
     // Adjust the mass in each layer (radiative and convective) based on the stellar evolution model.
     // Benbakoura et al. 2019, Eq 2.
-    // TODO does this need another reference due to changes?
     fn mass_transfer_envelope_to_core_torque(&self) -> f64 {
         // Takes into account the structural evolution of the star and the torques applied on both radiative and convective zones.
         if self.radiative_mass_derivative >= 0.0 {

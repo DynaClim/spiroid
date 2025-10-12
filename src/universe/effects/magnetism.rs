@@ -30,14 +30,17 @@ impl MagneticModel {
                 {
                     0.0
                 } else {
-                    wind.magnetic_torque(planet, star)
+                    // Computation of the useful wind parameters.
+                    wind.init_weber_davis(planet, star);
+
+                    wind.magnetic_torque
                 }
             }
         }
     }
 }
 
-// Flag indicating the nature of the magnetic interaction
+// Output flag indicating the nature of the magnetic interaction
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, Clone)]
 pub enum MagneticInteraction {
     #[default]
@@ -80,12 +83,12 @@ impl IsothermalWind {
     // ***WARNING!***
     // Calculates the characteristics of the stellar wind at a given distance from the star.
     // The characteristics are computed following the magnetized model of Weber & Davis (1967)
-    fn init_weber_davis(&mut self, distance_to_star_center: f64, star: &Star) {
+    fn init_weber_davis(&mut self, planet: &Planet, star: &Star) {
         let surface_magnetic_field = Self::magnetic_field(star.mass, star.rossby);
         self.radial_magnetic_field = Self::radial_magnetic_field(
             surface_magnetic_field,
             star.radius,
-            distance_to_star_center,
+            planet.semi_major_axis,
         );
 
         let coronal_temperature = Self::coronal_temperature(star.mass, star.rossby);
@@ -95,20 +98,20 @@ impl IsothermalWind {
         self.critical_radius_div_alfven_radius = self.critical_radius / star.alfven_radius;
 
         self.alfven_speed_at_alfven_radius = self.alfven_speed_at_alfven_radius(star);
-        self.magnetic_torque = 0.;
 
         self.integration_constant = self.integration_constant(star); // Requires alfven_speed_at_alfven_radius
         self.magnetic_pressure = magnetic_pressure(self.radial_magnetic_field); // Requires radial_magnetic_field
-        self.wind_velocity = self.weber_davis_velocity_profile(distance_to_star_center, star); // Requires alfven_speed_at_alfven_radius
+        self.wind_velocity = self.weber_davis_velocity_profile(planet.semi_major_axis, star); // Requires alfven_speed_at_alfven_radius
         self.surface_wind_velocity = self.weber_davis_velocity_profile(star.radius, star); // Requires alfven_speed_at_alfven_radius
 
         let coronal_density = Self::coronal_density(star.mass, star.rossby);
         self.wind_density =
-            self.density_profile(star.radius, coronal_density, distance_to_star_center);
+            self.density_profile(star.radius, coronal_density, planet.semi_major_axis);
 
-        self.azimuthal_velocity = star.spin * distance_to_star_center;
-        let keplerian_velocity = sqrt!(GRAVITATIONAL * star.mass / distance_to_star_center);
+        self.azimuthal_velocity = star.spin * planet.semi_major_axis;
+        let keplerian_velocity = sqrt!(GRAVITATIONAL * star.mass / planet.semi_major_axis);
         self.alfvenic_mach = self.alfvenic_mach(keplerian_velocity);
+        self.magnetic_torque = self.magnetic_torque(planet, star);
     }
 
     // Estimate the stellar surface magnetic field based on scaling laws.
@@ -141,7 +144,7 @@ impl IsothermalWind {
 
     // Speed of sound at the base of the corona, based on coronal temperature.
     fn speed_of_sound(coronal_temperature: f64) -> f64 {
-        (2. * BOLTZMANN_CONST * coronal_temperature / PROTON_MASS).powf(0.5)
+        sqrt!(2. * BOLTZMANN_CONST * coronal_temperature / PROTON_MASS)
     }
 
     // Magnetic field strength at a given distance from the star.
@@ -221,12 +224,10 @@ impl IsothermalWind {
             let d_energy_flux_by_dv =
                 self.derivative_d_energy_flux_by_dv(velocity, distance_from_stellar_center, star);
             // Estimate of velocity from the previous Newton-Raphson step.
-            let previous_speed_over_sound_speed = velocity;
-            velocity -= energy_flux_difference / d_energy_flux_by_dv;
-
-            while velocity <= 0. {
-                velocity = f64::midpoint(previous_speed_over_sound_speed, velocity);
-            }
+            velocity = Self::velocity_midpoint(
+                velocity,
+                velocity - energy_flux_difference / d_energy_flux_by_dv,
+            );
 
             energy_flux_difference = self.total_energy_flux_minus_constant(
                 self.alfven_speed_at_alfven_radius,
@@ -240,11 +241,19 @@ impl IsothermalWind {
         velocity
     }
 
+    // New value of alfven_speed when the Alfven speed is negative.
+    fn velocity_midpoint(prev_velocity: f64, mut velocity: f64) -> f64 {
+        while velocity <= 0. {
+            velocity = f64::midpoint(prev_velocity, velocity);
+        }
+        velocity
+    }
+
     // Total energy flux F (Eq. 24 in Weber & Davis 1967) minus the integration constant.
     // When the WD solution is met, this function should return 0.
     fn total_energy_flux_minus_constant(
         &self,
-        current_alfven_speed: f64,
+        alfven_speed: f64,
         velocity: f64,
         radius: f64,
         integration_constant: f64,
@@ -252,12 +261,11 @@ impl IsothermalWind {
     ) -> f64 {
         // Function F to cancel, as a function of the Alfven radius (F(speed_of_sound / alfven_speed_at_alfven_radius, critical_radius / alfven_radius) = 0 by knowing alfven_speed_at_alfven_radius as a function of integration_constant from F(1, 1) = 0)
         0.5 * velocity.powi(2)
-            - ln!(velocity) * (self.speed_of_sound / current_alfven_speed).powi(2)
-            - 2. * ln!(radius) * (self.speed_of_sound / current_alfven_speed).powi(2)
-            - GRAVITATIONAL * star.mass
-                / (star.alfven_radius * radius * current_alfven_speed.powi(2))
+            - ln!(velocity) * (self.speed_of_sound / alfven_speed).powi(2)
+            - 2. * ln!(radius) * (self.speed_of_sound / alfven_speed).powi(2)
+            - GRAVITATIONAL * star.mass / (star.alfven_radius * radius * alfven_speed.powi(2))
             + (star.spin.powi(2) * star.alfven_radius.powi(2)
-                / (2. * radius.powi(2) * current_alfven_speed.powi(2)))
+                / (2. * radius.powi(2) * alfven_speed.powi(2)))
                 * (1.
                     + ((-1. + 2. * velocity * radius.powi(2)) * (1. - radius.powi(2)).powi(2)
                         / (-1. + velocity * radius.powi(2)).powi(2)))
@@ -294,6 +302,26 @@ impl IsothermalWind {
             ) <= width_around_sonic_point)
     }
 
+    // Computation of the derivative, by calculating the derivative of F * alfven_speed_at_alfven_radius^2
+    fn estimate_d_energy_flux_by_dv(&self, alfven_speed: f64, star: &Star) -> f64 {
+        (self.speed_of_sound.powi(2) / alfven_speed) - alfven_speed
+            + (star.spin.powi(2)
+                * star.alfven_radius.powi(2)
+                * (1. - self.critical_radius_div_alfven_radius.powi(2)).powi(2)
+                / (self.critical_radius_div_alfven_radius.powi(2)))
+                * (1.
+                    / (self.speed_of_sound * self.critical_radius_div_alfven_radius.powi(2)
+                        - alfven_speed)
+                    + alfven_speed
+                        * (2.
+                            * self.speed_of_sound
+                            * self.critical_radius_div_alfven_radius.powi(2)
+                            - alfven_speed)
+                        / (self.speed_of_sound * self.critical_radius_div_alfven_radius.powi(2)
+                            - alfven_speed)
+                            .powi(3))
+    }
+
     // Value of the alfven speed at the alfven radius.
     // Used for computing the Weber-Davis solution at any other radius.
     fn alfven_speed_at_alfven_radius(&self, star: &Star) -> f64 {
@@ -311,7 +339,7 @@ impl IsothermalWind {
         };
 
         // Initial guess of the Alfven speed ensuring a super-alfvenic wind,  F(1, 1) = 0.
-        let mut current_alfven_speed = sqrt!(
+        let mut alfven_speed = sqrt!(
             ((-2. * GRAVITATIONAL * star.mass / star.alfven_radius)
                 + star.spin.powi(2) * star.alfven_radius.powi(2))
                 / (2. * integration_constant - 1.)
@@ -319,8 +347,8 @@ impl IsothermalWind {
 
         // Function F to cancel, as a function of the Alfven radius (F(speed_of_sound / alfven_speed_at_alfven_radius, critical_radius / alfven_radius) = 0 by knowing alfven_speed_at_alfven_radius as a function of integration_constant from F(1, 1) = 0)
         let mut energy_flux_difference = self.total_energy_flux_minus_constant(
-            current_alfven_speed,
-            self.speed_of_sound / current_alfven_speed,
+            alfven_speed,
+            self.speed_of_sound / alfven_speed,
             self.critical_radius_div_alfven_radius,
             integration_constant,
             star,
@@ -328,53 +356,31 @@ impl IsothermalWind {
 
         // Newton-Raphson method to find the Alfven speed.
         while abs!(energy_flux_difference) >= 1e-7 {
-            // Computation of the derivative, by calculating the derivative of F * alfven_speed_at_alfven_radius^2
-            let estimate_d_energy_flux_by_dv = (self.speed_of_sound.powi(2) / current_alfven_speed)
-                - current_alfven_speed
-                + (star.spin.powi(2)
-                    * star.alfven_radius.powi(2)
-                    * (1. - self.critical_radius_div_alfven_radius.powi(2)).powi(2)
-                    / (self.critical_radius_div_alfven_radius.powi(2)))
-                    * (1.
-                        / (self.speed_of_sound * self.critical_radius_div_alfven_radius.powi(2)
-                            - current_alfven_speed)
-                        + current_alfven_speed
-                            * (2.
-                                * self.speed_of_sound
-                                * self.critical_radius_div_alfven_radius.powi(2)
-                                - current_alfven_speed)
-                            / (self.speed_of_sound
-                                * self.critical_radius_div_alfven_radius.powi(2)
-                                - current_alfven_speed)
-                                .powi(3));
+            let estimate_d_energy_flux_by_dv =
+                self.estimate_d_energy_flux_by_dv(alfven_speed, star);
+            let d_energy_flux_by_dv = estimate_d_energy_flux_by_dv / alfven_speed.powi(2)
+                - 2. * energy_flux_difference / alfven_speed;
 
-            let d_energy_flux_by_dv = estimate_d_energy_flux_by_dv / current_alfven_speed.powi(2)
-                - 2. * energy_flux_difference / current_alfven_speed;
-            let previous_alfven_speed = current_alfven_speed;
-            // Newton method
-            current_alfven_speed -= energy_flux_difference / d_energy_flux_by_dv;
-
-            while current_alfven_speed <= 0. {
-                // New value of alfven_speed_at_alfven_radius when the Alfven speed is negative.
-                current_alfven_speed = f64::midpoint(previous_alfven_speed, current_alfven_speed);
-            }
+            alfven_speed = Self::velocity_midpoint(
+                alfven_speed,
+                alfven_speed - energy_flux_difference / d_energy_flux_by_dv,
+            );
 
             integration_constant = 0.5
-                - (GRAVITATIONAL * star.mass / (star.alfven_radius * current_alfven_speed.powi(2)))
-                + (star.spin.powi(2) * star.alfven_radius.powi(2)
-                    / (2. * current_alfven_speed.powi(2)));
+                - (GRAVITATIONAL * star.mass / (star.alfven_radius * alfven_speed.powi(2)))
+                + (star.spin.powi(2) * star.alfven_radius.powi(2) / (2. * alfven_speed.powi(2)));
 
             // Update of the function to cancel.
             energy_flux_difference = self.total_energy_flux_minus_constant(
-                current_alfven_speed,
-                self.speed_of_sound / current_alfven_speed, // Update of the ratio speed_of_sound / alfven_speed_at_alfven_radius.
+                alfven_speed,
+                self.speed_of_sound / alfven_speed, // Update of the ratio speed_of_sound / alfven_speed_at_alfven_radius.
                 self.critical_radius_div_alfven_radius,
                 integration_constant,
                 star,
             );
         }
 
-        current_alfven_speed
+        alfven_speed
     }
 
     // Computes a Weber-Davis velocity profile by using a linear interpolation near the critical points.
@@ -426,15 +432,15 @@ impl IsothermalWind {
             v_next = self.velocity_profile(x_next, star);
             let radius_over_sonic_point =
                 star.radius / (self.critical_radius_div_alfven_radius * star.alfven_radius);
-            let mut speed_over_sound_speed: f64 = 1e-7;
-
-            if radius_over_sonic_point >= 1. {
-                speed_over_sound_speed = 10.;
-            }
+            let mut velocity: f64 = if radius_over_sonic_point >= 1. {
+                10.
+            } else {
+                1e-7
+            };
 
             loop {
-                let energy_flux_difference = speed_over_sound_speed.powi(2)
-                    - 2. * ln!(speed_over_sound_speed)
+                let energy_flux_difference = velocity.powi(2)
+                    - 2. * ln!(velocity)
                     - 4. / radius_over_sonic_point
                     - 4. * ln!(radius_over_sonic_point)
                     + 3.;
@@ -442,19 +448,13 @@ impl IsothermalWind {
                     break;
                 }
 
-                let previous_speed_over_sound_speed = speed_over_sound_speed;
-                speed_over_sound_speed = speed_over_sound_speed
-                    - 0.5 * energy_flux_difference
-                        / (speed_over_sound_speed - 1. / speed_over_sound_speed);
+                let previous_velocity = velocity;
+                velocity = velocity - 0.5 * energy_flux_difference / (velocity - 1. / velocity);
 
-                while speed_over_sound_speed <= 0. {
-                    speed_over_sound_speed =
-                        f64::midpoint(previous_speed_over_sound_speed, speed_over_sound_speed);
-                }
+                velocity = Self::velocity_midpoint(previous_velocity, velocity);
             }
 
-            v_prev =
-                self.speed_of_sound * speed_over_sound_speed / self.alfven_speed_at_alfven_radius;
+            v_prev = self.speed_of_sound * velocity / self.alfven_speed_at_alfven_radius;
         }
 
         // Linear interpolation of velocity, in units of alfven radius speed.
@@ -464,9 +464,6 @@ impl IsothermalWind {
     /// Computes the magnetic torque, taking into account unipolar and dipolar interaction between the planet and the star, following Strugarek et al. (2017)
     fn magnetic_torque(&mut self, planet: &Planet, star: &Star) -> f64 {
         // tidal_frequency difference omega_convective - omega_orbital
-
-        // Computation of the useful wind parameters.
-        self.init_weber_davis(planet.semi_major_axis, star);
 
         // Ratio planet magnetic pressure / wind magnetic pressure, to check if a magnetosphere could be sustained
         // If lambda <= 1., Unipolar interaction, without magnetosphere.
@@ -504,15 +501,14 @@ impl IsothermalWind {
         let alpha = 0.4;
         let depth1 = -3. * ln!(alpha);
         let depth = 1e-8;
-        let torque_sign = -tanh!(star.tidal_frequency / depth);
-        self.magnetic_torque = torque_sign
-            * abs!(
-                0.5 * (torque_dipolar - torque_unipolar)
-                    * tanh!(10. * (ln!(lambda) + depth1) / depth1)
-                    + 0.5 * (torque_unipolar + torque_dipolar)
-            );
+        let sign = -tanh!(star.tidal_frequency / depth);
 
-        self.magnetic_torque
+        let torque = abs!(
+            0.5 * (torque_dipolar - torque_unipolar) * tanh!(10. * (ln!(lambda) + depth1) / depth1)
+                + 0.5 * (torque_unipolar + torque_dipolar)
+        );
+
+        sign * torque
     }
 }
 

@@ -481,8 +481,7 @@ impl Star {
         // A clean study should be made again before changing this.
 
         // Matt et al. 2015, Eq. 8
-        let gamma =
-            8e23 * (self.radius / SOLAR_RADIUS).powf(3.1) * (self.mass / SOLAR_MASS).powf(0.5);
+        let gamma = 8e23 * (self.radius / SOLAR_RADIUS).powf(3.1) * sqrt!(self.mass / SOLAR_MASS);
         // Wind braking torque in Joules, following (Matt et al. 2015)
         if self.rossby > ROSSBY_SATURATION {
             // Matt et al. 2015, Eq. 6

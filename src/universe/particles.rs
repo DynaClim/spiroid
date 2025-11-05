@@ -48,11 +48,12 @@ impl Particle {
 
 // Common properties of both Star and Planet.
 // Enables making functions generic over impl ParticleT.
-pub(crate) trait ParticleT {
+pub trait ParticleT {
     fn semi_major_axis(&self) -> f64;
     fn mass(&self) -> f64;
     fn radius(&self) -> f64;
     fn spin(&self) -> f64;
+    fn spin_inclination(&self) -> f64;
     fn eccentricity(&self) -> f64;
     fn inclination(&self) -> f64;
     fn luminosity(&self) -> f64;

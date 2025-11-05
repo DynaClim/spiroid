@@ -73,6 +73,9 @@ impl ParticleT for Planet {
     fn spin(&self) -> f64 {
         self.spin
     }
+    fn spin_inclination(&self) -> f64 {
+        self.spin_inclination
+    }
     fn eccentricity(&self) -> f64 {
         self.eccentricity
     }

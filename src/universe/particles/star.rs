@@ -111,6 +111,9 @@ impl ParticleT for Star {
     fn spin(&self) -> f64 {
         self.spin
     }
+    fn spin_inclination(&self) -> f64 {
+        todo!()
+    }
     fn eccentricity(&self) -> f64 {
         todo!()
     }
@@ -330,7 +333,9 @@ impl Star {
     fn evolved_change_semi_major_axis(&mut self, planet: &Planet) -> f64 {
         self.terminal_wind_speed = self.terminal_wind_speed(); // requires mass, radius
         let orbital_velocity = planet.mean_motion * planet.semi_major_axis; // requires semi_major_axis, mean_motion
-        let mass_ratio = planet.mass / self.mass; // requires mass, planet mass; Esseldeurs et al. 2025, below Eq. 18
+        let mass_ratio = planet.mass / self.mass; // requires mass, planet mass
+
+        // Esseldeurs et al. 2025, below Eq. 18
         self.mass_accretion_efficiency =
             self.mass_accretion_efficiency(mass_ratio, orbital_velocity); // requires terminal_wind_speed
         self.wind_orbital_angular_momentum_loss =

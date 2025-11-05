@@ -160,7 +160,7 @@ fn _solid() {
     let real_expected = love_number.real.clone();
     let imaginary_expected = love_number.imaginary.clone();
     let mpq = test_mpq();
-    let _ = love_number.refresh_cache(TEST_TIME, &planet, &star, &particle_type, &mpq);
+    let _ = love_number.refresh_cache(TEST_TIME, &planet, &star, &particle_type, mpq);
 
     assert_eq!(
         (real_expected, imaginary_expected),

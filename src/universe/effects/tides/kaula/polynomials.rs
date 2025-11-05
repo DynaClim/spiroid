@@ -9,13 +9,15 @@ pub(crate) struct Polynomials {
 }
 
 impl Polynomials {
-    pub(crate) fn refresh_cache(&mut self, eccentricity: f64, inclination: f64) {
+    pub(crate) fn refresh_eccentricity_cache(&mut self, eccentricity: f64) {
+        self.eccentricity_polynomials(eccentricity);
+        self.eccentricity_polynomials_derivatives(eccentricity);
+    }
+    pub(crate) fn refresh_inclination_cache(&mut self, inclination: f64) {
         let cos_inc = cos!(inclination);
         let sin_inc = sin!(inclination);
         self.inclination_polynomials(cos_inc, sin_inc);
         self.inclination_polynomials_derivatives(cos_inc, sin_inc);
-        self.eccentricity_polynomials(eccentricity);
-        self.eccentricity_polynomials_derivatives(eccentricity);
     }
 
     // Inclination polynomials defined as Kaula (1964)

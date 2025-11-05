@@ -109,9 +109,15 @@ impl LoveNumber {
         self.imaginary[index] = imaginary;
     }
 
-    fn clear_cache(&mut self) {
-        self.real.fill(0.0);
-        self.imaginary.fill(0.0);
+    /// Clear the cache for the tidal frequencies in the range to be populated.
+    fn clear_cache(&mut self, mpq: Mpq) {
+        for q in mpq.q_min..mpq.q_max {
+            for p in mpq.p_min..mpq.p_max {
+                for m in mpq.m_min..mpq.m_max {
+                    self.set_k2(m, p, q, 0.0, 0.0);
+                }
+            }
+        }
     }
 
     fn pq_fac(p: u8, q: u8) -> i32 {
@@ -142,11 +148,11 @@ impl LoveNumber {
         planet: &impl ParticleT,
         star: &impl ParticleT,
         particle_type: &ParticleComposition,
-        mpq: &Mpq,
+        mpq: Mpq,
     ) -> Result<()> {
         let mut k2_re;
         let mut k2_im;
-        self.clear_cache();
+        self.clear_cache(mpq);
 
         // This internal cache acts as an allocation free hash table, where the index (key) is derived from (q_fac, m) and value is the k2
         // for the relevant tidal frequency.

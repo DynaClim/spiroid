@@ -37,6 +37,12 @@ fn main() -> Result<()> {
                     let _interpolation_3d = read_csv_rows_from_dir::<f64>(interpolate_dir)?;
                     todo!();
                 }
+
+                if let ParticleType::Star(star) = &simulation.system.central_body.kind
+                    && let ParticleType::Planet(planet) = &simulation.system.orbiting_body.kind
+                {
+                    kaula.initialise_cache(initial_time, star, planet)?;
+                }
             }
 
             // Initialise the universe (star, planet, etc).

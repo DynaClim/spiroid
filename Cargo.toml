@@ -24,8 +24,8 @@ astro-const = { git = "https://github.com/DynaClim/astro-const.git" }
 math-macros = { git = "https://github.com/DynaClim/math-macros.git" }
 sci-file = { git = "https://github.com/DynaClim/sci-file.git" }
 simulation = { git = "https://github.com/DynaClim/simulation.git" }
-serde-big-array = "0.5.1"
 derive_more = { version = "2.0.1", features = ["add"] }
+num-complex = "0.4.6"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

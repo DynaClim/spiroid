@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use anyhow::Result;
-use serde_big_array::BigArray;
+use num_complex::{Complex, c64};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum ParticleComposition {
@@ -17,30 +17,48 @@ pub enum ParticleComposition {
     None,
     Solid {
         solid_file: PathBuf,
-    },
-    Atmosphere {
-        solid_file: PathBuf,
-        thermal_tide_model: ThermalTideModel,
+        #[serde(skip)]
+        solid_k2: Interpolator<Complex<f64>>,
     },
     SolidAtmosphere {
         solid_file: PathBuf,
+        #[serde(skip)]
+        solid_k2: Interpolator<Complex<f64>>,
         thermal_tide_model: ThermalTideModel,
+        #[serde(skip)]
+        imaginary_atmosphere: Interpolator<Complex<f64>>,
     },
     SolidOcean {
         solid_file: PathBuf,
+        #[serde(skip)]
+        solid_k2: Interpolator<Complex<f64>>,
         ocean_file: PathBuf,
+        #[serde(skip)]
+        ocean_k2: Interpolator<Complex<f64>>,
     },
     SolidAtmosphereOcean {
         solid_file: PathBuf,
+        #[serde(skip)]
+        solid_k2: Interpolator<Complex<f64>>,
         ocean_file: PathBuf,
+        #[serde(skip)]
+        ocean_k2: Interpolator<Complex<f64>>,
         thermal_tide_model: ThermalTideModel,
+        #[serde(skip)]
+        imaginary_atmosphere: Interpolator<Complex<f64>>,
     },
-    Interpolate {
-        interpolate_dir: PathBuf,
+    TemporalSolid {
+        solid_files_dir: PathBuf,
+        #[serde(skip)]
+        solid_by_time: Vec<Interpolator<Complex<f64>>>,
     },
-    InterpolateAtmosphere {
-        interpolate_dir: PathBuf,
+    TemporalSolidAtmosphere {
+        solid_files_dir: PathBuf,
+        #[serde(skip)]
+        solid_by_time: Vec<Interpolator<Complex<f64>>>,
         thermal_tide_model: ThermalTideModel,
+        #[serde(skip)]
+        imaginary_atmosphere: Interpolator<Complex<f64>>,
     },
 }
 
@@ -48,45 +66,29 @@ pub enum ParticleComposition {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub(crate) struct LoveNumber {
     // Cache
-    #[serde(with = "BigArray")]
-    real: [f64; 57],
-    #[serde(with = "BigArray")]
-    imaginary: [f64; 57],
+    #[serde(skip)]
+    #[serde(default = "love_number_k2_default")]
+    k2: [Complex<f64>; 57],
+}
 
-    pub(crate) imaginary_atmosphere: Interpolator<f64>,
-    pub(crate) imaginary_oceanic: Interpolator<f64>,
-    pub(crate) imaginary_solid: Interpolator<f64>,
-    pub(crate) real_solid: Interpolator<f64>,
-    love_interpolator: Vec<Interpolator<f64>>,
+fn love_number_k2_default() -> [Complex<f64>; 57] {
+    [Complex::from(0.0); 57]
 }
 
 impl Default for LoveNumber {
     fn default() -> Self {
         Self {
-            real: [0.0; 57],
-            imaginary: [0.0; 57],
-            imaginary_atmosphere: Interpolator::new(),
-            imaginary_oceanic: Interpolator::new(),
-            imaginary_solid: Interpolator::new(),
-            real_solid: Interpolator::new(),
-            love_interpolator: vec![Interpolator::new()],
+            k2: love_number_k2_default(),
         }
     }
 }
 
 impl LoveNumber {
-    /// Fetches the real love number from the cache for index of tuple (m, p, q).
-    pub(crate) fn real(&self, m: usize, p: usize, q: usize) -> f64 {
+    /// Fetches the k2 love number from the cache for index of tuple (m, p, q).
+    pub(crate) fn k2(&self, m: usize, p: usize, q: usize) -> Complex<f64> {
         // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
         let index = Self::get_index(m, p, q);
-        self.real[index]
-    }
-
-    /// Fetches the imaginary love number from the cache for index of tuple (m, p, q).
-    pub(crate) fn imaginary(&self, m: usize, p: usize, q: usize) -> f64 {
-        // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
-        let index = Self::get_index(m, p, q);
-        self.imaginary[index]
+        self.k2[index]
     }
 
     #[allow(clippy::cast_possible_truncation)]
@@ -103,10 +105,9 @@ impl LoveNumber {
     }
 
     /// Sets the real and imaginary love number into the cache for index of tuple (m, p, q).
-    fn set_k2(&mut self, m: u8, p: u8, q: u8, real: f64, imaginary: f64) {
+    fn set_k2(&mut self, m: u8, p: u8, q: u8, k2: Complex<f64>) {
         let index = Self::get_index(m.into(), p.into(), q.into());
-        self.real[index] = real;
-        self.imaginary[index] = imaginary;
+        self.k2[index] = k2;
     }
 
     /// Clear the cache for the tidal frequencies in the range to be populated.
@@ -114,7 +115,7 @@ impl LoveNumber {
         for q in mpq.q_min..mpq.q_max {
             for p in mpq.p_min..mpq.p_max {
                 for m in mpq.m_min..mpq.m_max {
-                    self.set_k2(m, p, q, 0.0, 0.0);
+                    self.set_k2(m, p, q, c64(0.0, 0.0));
                 }
             }
         }
@@ -150,29 +151,26 @@ impl LoveNumber {
         particle_type: &ParticleComposition,
         mpq: Mpq,
     ) -> Result<()> {
-        let mut k2_re;
-        let mut k2_im;
+        let mut k2;
         self.clear_cache(mpq);
-
         // This internal cache acts as an allocation free hash table, where the index (key) is derived from (q_fac, m) and value is the k2
-        // for the relevant tidal frequency.
+        // for the associated tidal frequency.
         // If the array value is zero, the cache is assumed to not been filled. Tidal frequency of zero is not calculated,
         // so the (possible) false cache miss is insignificant.
-        // There are 19 possible q_fac values (-9..=9) for each m value (0..=2)
-        // This cache means only 57 calculations are done for the full 135 (q = 15 * p = 3 * m = 3) iterations of the loop.
+        // There are only 19 possible q_fac values (-9..=9) for each m value (0..=2), which means
+        // only 57 calculations are done instead of the full 135 (q = 15 * p = 3 * m = 3) iterations of the loop.
         for q in mpq.q_min..mpq.q_max {
             for p in mpq.p_min..mpq.p_max {
                 for m in mpq.m_min..mpq.m_max {
-                    k2_re = self.real(m.into(), p.into(), q.into());
-                    k2_im = self.imaginary(m.into(), p.into(), q.into());
-                    if k2_re == 0.0 && k2_im == 0.0 {
+                    // Use the value in the cache if it exists.
+                    k2 = self.k2(m.into(), p.into(), q.into());
+                    if k2 == c64(0.0, 0.0) {
                         // Cache miss, compute k2
                         let w_2lmpq =
                             Self::tidal_excitation_frequency_mode_sigma_2mpq(planet, m, p, q);
-                        k2_re = self.real_part(w_2lmpq, particle_type)?;
-                        k2_im = self.imaginary_part(time, w_2lmpq, planet, star, particle_type)?;
+                        k2 = Self::compute_k2(time, w_2lmpq, planet, star, particle_type)?;
                         // Add to cache
-                        self.set_k2(m, p, q, k2_re, k2_im);
+                        self.set_k2(m, p, q, k2);
                     }
                 }
             }
@@ -180,70 +178,75 @@ impl LoveNumber {
         Ok(())
     }
 
-    // Select the correct love number calculation based on the composition of the planet.
-    // TODO add additional solid love numbers for different particle types when they become available.
-    fn real_part(&self, freq: f64, particle_type: &ParticleComposition) -> Result<f64> {
-        match particle_type {
-            ParticleComposition::None => {
-                todo!();
-            }
-            _ => Ok(self.real_solid(freq)?),
-        }
+    fn interpolate_k2_by_tidal_frequency(
+        interpolator: &Interpolator<Complex<f64>>,
+        tidal_frequency: f64,
+    ) -> Result<Complex<f64>> {
+        let (_, k2) = interpolator.interpolate(abs!(tidal_frequency))?;
+        // Real part of love number is always negative.
+        // Imaginary part of love number is sign dependent on the freqency.
+        Ok(c64(-k2.re, tidal_frequency.signum() * k2.im))
     }
 
-    // Real part of love number is always negative.
-    fn real_solid(&self, freq: f64) -> Result<f64> {
-        let (_, real_k2) = self.real_solid.interpolate(abs!(freq))?;
-        Ok(-real_k2)
-    }
-
-    // Select the correct love number calculation based on the composition of the planet.
-    fn imaginary_part(
-        &self,
+    // Select the love number calculation based on the composition of the planet.
+    fn compute_k2(
         time: f64,
-        freq: f64,
+        tidal_frequency: f64,
         planet: &impl ParticleT,
         star: &impl ParticleT,
         particle_type: &ParticleComposition,
-    ) -> Result<f64> {
+    ) -> Result<Complex<f64>> {
         match particle_type {
             ParticleComposition::None => {
-                todo!();
+                unreachable!();
             }
-            ParticleComposition::Solid { .. } => self.imaginary_solid(freq),
-            ParticleComposition::Atmosphere {
-                thermal_tide_model, ..
-            } => Ok(thermal_tide_model.imaginary_atmosphere(freq, planet, star)),
+            ParticleComposition::Solid { solid_k2, .. } => {
+                Self::interpolate_k2_by_tidal_frequency(solid_k2, tidal_frequency)
+            }
             ParticleComposition::SolidAtmosphere {
-                thermal_tide_model, ..
-            } => Ok(self.imaginary_solid(freq)?
-                + thermal_tide_model.imaginary_atmosphere(freq, planet, star)),
-            ParticleComposition::SolidOcean { .. } => {
-                Ok(self.imaginary_solid(freq)? + self.imaginary_oceanic(freq)?)
-            }
+                solid_k2,
+                thermal_tide_model,
+                ..
+            } => Ok(
+                Self::interpolate_k2_by_tidal_frequency(solid_k2, tidal_frequency)?
+                    + thermal_tide_model.imaginary_atmosphere(tidal_frequency, planet, star),
+            ),
+            ParticleComposition::SolidOcean {
+                solid_k2, ocean_k2, ..
+            } => Ok(
+                Self::interpolate_k2_by_tidal_frequency(solid_k2, tidal_frequency)?
+                    + Self::interpolate_k2_by_tidal_frequency(ocean_k2, tidal_frequency)?,
+            ),
             ParticleComposition::SolidAtmosphereOcean {
-                thermal_tide_model, ..
-            } => Ok(self.imaginary_solid(freq)?
-                + thermal_tide_model.imaginary_atmosphere(freq, planet, star)
-                + self.imaginary_oceanic(freq)?),
-            ParticleComposition::Interpolate { .. } => {
-                self.love_number_interpolated_by_frequency(time, freq)
+                solid_k2,
+                ocean_k2,
+                thermal_tide_model,
+                ..
+            } => Ok(
+                Self::interpolate_k2_by_tidal_frequency(solid_k2, tidal_frequency)?
+                    + thermal_tide_model.imaginary_atmosphere(tidal_frequency, planet, star)
+                    + Self::interpolate_k2_by_tidal_frequency(ocean_k2, tidal_frequency)?,
+            ),
+            ParticleComposition::TemporalSolid { solid_by_time, .. } => {
+                Self::interpolate_k2_by_time_and_tidal_frequency(
+                    solid_by_time,
+                    time,
+                    tidal_frequency,
+                )
             }
-            ParticleComposition::InterpolateAtmosphere {
-                thermal_tide_model, ..
-            } => Ok(self.love_number_interpolated_by_frequency(time, freq)?
-                + thermal_tide_model.imaginary_atmosphere(freq, planet, star)),
+            ParticleComposition::TemporalSolidAtmosphere {
+                thermal_tide_model,
+                solid_by_time,
+                ..
+            } => Ok(Self::interpolate_k2_by_time_and_tidal_frequency(
+                solid_by_time,
+                time,
+                tidal_frequency,
+            )? + c64(
+                0.0,
+                thermal_tide_model.imaginary_atmosphere(tidal_frequency, planet, star),
+            )),
         }
-    }
-
-    fn imaginary_solid(&self, freq: f64) -> Result<f64> {
-        let (_, im_k2) = self.imaginary_solid.interpolate(abs!(freq))?;
-        Ok(freq.signum() * im_k2)
-    }
-
-    fn imaginary_oceanic(&self, freq: f64) -> Result<f64> {
-        let (_, im_k2) = self.imaginary_oceanic.interpolate(abs!(freq))?;
-        Ok(im_k2)
     }
 
     // Love number data stored across multiple files 1.0, 1.1, 1.2, ..., 4.0
@@ -251,17 +254,21 @@ impl LoveNumber {
     // Convert the time to giga-years, then index into the vector to access the relevant data
     // e.g. time ~= 1.0 gigayears: (1 - 1) * 10 == 0, so vec[0] contains relevant data
     // e.g. time ~= 3.5 gigayears: (3.5 - 1) * 10 == 25, so vec[25] contains relevant data.
-    fn love_number_interpolated_by_frequency(&self, time: f64, freq: f64) -> Result<f64> {
+    fn interpolate_k2_by_time_and_tidal_frequency(
+        interpolators: &[Interpolator<Complex<f64>>],
+        time: f64,
+        tidal_frequency: f64,
+    ) -> Result<Complex<f64>> {
         // Find which section of the love number data files to use, based on the "giga-year" and convert it to an index
         #[allow(clippy::cast_possible_truncation)]
         #[allow(clippy::cast_sign_loss)]
         let index = (time / 1e9 / SECONDS_IN_YEAR) as usize * 10 - 10;
-        let love_interpolator = &self.love_interpolator[index];
-        if freq == 0.0 {
-            Ok(0.0)
+        let solid_by_time = &interpolators[index];
+        if tidal_frequency == 0.0 {
+            Ok(c64(0.0, 0.0))
         } else {
-            let (_, im_k2) = love_interpolator.interpolate(abs!(freq))?;
-            Ok(freq.signum() * im_k2)
+            let (_, k2) = solid_by_time.interpolate(abs!(tidal_frequency))?;
+            Ok(c64(-k2.re, tidal_frequency.signum() * k2.im))
         }
     }
 }
@@ -285,24 +292,31 @@ pub enum ThermalTideModel {
 impl ThermalTideModel {
     fn imaginary_atmosphere(
         &self,
-        freq: f64,
+        tidal_frequency: f64,
         planet: &impl ParticleT,
         star: &impl ParticleT,
     ) -> f64 {
         match self {
-            ThermalTideModel::Analytic => Self::imaginary_atmosphere_analytic(freq, star, planet),
+            ThermalTideModel::Analytic => {
+                Self::imaginary_atmosphere_analytic(tidal_frequency, star, planet)
+            }
             ThermalTideModel::Auclair {
                 surface_temperature,
                 radiative_frequency,
             } => Self::imaginary_atmosphere_auclair(
                 *surface_temperature,
                 *radiative_frequency,
-                freq,
+                tidal_frequency,
                 star,
                 planet,
             ),
             ThermalTideModel::AuclairScaling { surface_pressure } => {
-                Self::imaginary_atmosphere_auclair_scaling(*surface_pressure, freq, star, planet)
+                Self::imaginary_atmosphere_auclair_scaling(
+                    *surface_pressure,
+                    tidal_frequency,
+                    star,
+                    planet,
+                )
             }
             ThermalTideModel::Leconte {
                 thermal_tide_amplitude,
@@ -310,7 +324,7 @@ impl ThermalTideModel {
             } => Self::imaginary_atmosphere_leconte(
                 *thermal_tide_amplitude,
                 *radiative_frequency,
-                freq,
+                tidal_frequency,
                 star,
                 planet,
             ),
@@ -320,7 +334,7 @@ impl ThermalTideModel {
     // Auclair-desrotour 2017a Eq. 173
     // Values of physical parameter table 1
     fn imaginary_atmosphere_analytic(
-        freq: f64,
+        tidal_frequency: f64,
         star: &impl ParticleT,
         planet: &impl ParticleT,
     ) -> f64 {
@@ -339,8 +353,8 @@ impl ThermalTideModel {
         // Auclair-Desrotour 2017b Eq. 5 + 6
         -(epsilon * alpha * star.luminosity() * planet.semi_major_axis() * kappa)
             / (5. * star.mass() * ra * surface_temperature * planet.radius())
-            * freq
-            / (freq.powi(2) + omega.powi(2))
+            * tidal_frequency
+            / (tidal_frequency.powi(2) + omega.powi(2))
     }
 
     // Thermal Love number
@@ -348,7 +362,7 @@ impl ThermalTideModel {
     fn imaginary_atmosphere_auclair(
         surface_temperature: f64,
         omega: f64,
-        freq: f64,
+        tidal_frequency: f64,
         star: &impl ParticleT,
         planet: &impl ParticleT,
     ) -> f64 {
@@ -377,7 +391,7 @@ impl ThermalTideModel {
         // Rescaled Radiative frequency
         let w_0 = omega * (star.luminosity() / SOLAR_LUMINOSITY).powf(0.75);
         // Maxwell-like frequency dependence
-        let q_a = freq / (freq.powi(2) + w_0.powi(2));
+        let q_a = tidal_frequency / (tidal_frequency.powi(2) + w_0.powi(2));
 
         factor * q_a
     }
@@ -386,12 +400,12 @@ impl ThermalTideModel {
     // Auclair-Desrotour et al. (2019) Sec. 5.3
     fn imaginary_atmosphere_auclair_scaling(
         surface_pressure: f64,
-        freq: f64,
+        tidal_frequency: f64,
         star: &impl ParticleT,
         planet: &impl ParticleT,
     ) -> f64 {
         // Avoid division by zero NaN.
-        if freq == 0. {
+        if tidal_frequency == 0. {
             0.
         } else {
             // scaling model for the atmospheric love number, Eq. 49
@@ -413,7 +427,7 @@ impl ThermalTideModel {
             let tau_0 = 10.0_f64.powf(0.3 * log10!(surface_pressure_bar) + 0.038);
 
             // Scaled frequency Eq. 46
-            let sigma = freq * SECONDS_IN_DAY;
+            let sigma = tidal_frequency * SECONDS_IN_DAY;
             let chi = log10!(abs!(tau_0 * sigma));
             // Activation funtions Eq. 48
             let f1 = 1.0 / (1.0 + ((chi - chi1) / d1).exp());
@@ -423,7 +437,7 @@ impl ThermalTideModel {
             let f_par = (a1 * chi + b1) * f1 + (a2 * chi + b2) * f2 + btrans * (1.0 - f1 - f2);
 
             // Imaginary part of the spherical harmonic of surface pressure variations Eq. 46
-            let imaginary_delta_pressure_2 = q_0 * 10.0_f64.powf(f_par) * freq.signum();
+            let imaginary_delta_pressure_2 = q_0 * 10.0_f64.powf(f_par) * tidal_frequency.signum();
 
             // Imaginary tidal love number associated with conversion factor derived from Leconte et al. 2015
             Self::imaginary_tidal_love_number_leconte(imaginary_delta_pressure_2, star, planet)
@@ -434,11 +448,11 @@ impl ThermalTideModel {
     fn imaginary_atmosphere_leconte(
         thermal_tide_amplitude: f64,
         radiative_frequency: f64,
-        freq: f64,
+        tidal_frequency: f64,
         star: &impl ParticleT,
         planet: &impl ParticleT,
     ) -> f64 {
-        let tmp = freq / radiative_frequency;
+        let tmp = tidal_frequency / radiative_frequency;
         // Maxwell-like frequency dependence
         let q_a = thermal_tide_amplitude * (tmp / (1.0 + tmp.powi(2)));
 

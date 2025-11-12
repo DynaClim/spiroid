@@ -26,15 +26,16 @@ fn main() -> Result<()> {
             if let Some(kaula) = simulation.system.orbiting_body.tides.kaula_get_mut() {
                 if let Some(solid_file) = kaula.solid_file() {
                     // Maps each column of love number data into a vector.
-                    let love_solid = read_csv_columns_from_file::<f64>(solid_file)?;
-                    kaula.initialise_love_number_solid(&love_solid);
+                    let solid_k2_spectrum = read_csv_columns_from_file::<f64>(solid_file)?;
+                    kaula.initialise_love_number_solid(&solid_k2_spectrum);
                 }
                 if let Some(ocean_file) = kaula.ocean_file() {
-                    let love_ocean = read_csv_columns_from_file::<f64>(ocean_file)?;
-                    kaula.initialise_love_number_ocean(&love_ocean);
+                    let ocean_k2_spectrum = read_csv_columns_from_file::<f64>(ocean_file)?;
+                    kaula.initialise_love_number_ocean(&ocean_k2_spectrum);
                 }
                 if let Some(interpolate_dir) = kaula.interpolate_dir() {
-                    let _interpolation_3d = read_csv_rows_from_dir::<f64>(interpolate_dir)?;
+                    let _interpolation_2d_k2_spectrum =
+                        read_csv_rows_from_dir::<f64>(interpolate_dir)?;
                     todo!();
                 }
 

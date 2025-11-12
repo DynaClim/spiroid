@@ -1,7 +1,7 @@
 use anyhow::Result;
+use num_complex::{Complex, c64};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
 mod love_number;
 mod polynomials;
 
@@ -71,8 +71,7 @@ pub struct Kaula {
 impl Kaula {
     pub fn solid_file(&self) -> Option<&PathBuf> {
         match self.particle_type {
-            ParticleComposition::Solid { ref solid_file }
-            | ParticleComposition::Atmosphere { ref solid_file, .. }
+            ParticleComposition::Solid { ref solid_file, .. }
             | ParticleComposition::SolidAtmosphere { ref solid_file, .. }
             | ParticleComposition::SolidOcean { ref solid_file, .. }
             | ParticleComposition::SolidAtmosphereOcean { ref solid_file, .. } => Some(solid_file),
@@ -90,31 +89,62 @@ impl Kaula {
 
     pub fn interpolate_dir(&self) -> Option<&PathBuf> {
         match self.particle_type {
-            ParticleComposition::Interpolate {
-                ref interpolate_dir,
+            ParticleComposition::TemporalSolid {
+                ref solid_files_dir,
                 ..
             }
-            | ParticleComposition::InterpolateAtmosphere {
-                ref interpolate_dir,
+            | ParticleComposition::TemporalSolidAtmosphere {
+                ref solid_files_dir,
                 ..
-            } => Some(interpolate_dir),
+            } => Some(solid_files_dir),
             _ => None,
         }
     }
 
     pub fn initialise_love_number_solid(&mut self, love_solid: &[Vec<f64>]) {
-        self.love_number
-            .imaginary_solid
-            .init(&love_solid[0], &love_solid[1]);
-        self.love_number
-            .real_solid
-            .init(&love_solid[0], &love_solid[2]);
+        match self.particle_type {
+            ParticleComposition::Solid {
+                ref mut solid_k2, ..
+            }
+            | ParticleComposition::SolidAtmosphere {
+                ref mut solid_k2, ..
+            }
+            | ParticleComposition::SolidAtmosphereOcean {
+                ref mut solid_k2, ..
+            } => {
+                //TODO change the input file format so the real part precedes imaginary part
+                // Combine the parts into Complex number type
+                let love_numbers = love_solid[1]
+                    .iter()
+                    .zip(love_solid[2].iter())
+                    .map(|(im, re)| c64(*re, *im))
+                    .collect::<Vec<Complex<f64>>>();
+                solid_k2.init(&love_solid[0], &love_numbers);
+            }
+            _ => unreachable!(),
+        }
     }
 
     pub fn initialise_love_number_ocean(&mut self, love_ocean: &[Vec<f64>]) {
-        self.love_number
-            .imaginary_oceanic
-            .init(&love_ocean[0], &love_ocean[1]);
+        match self.particle_type {
+            ParticleComposition::SolidOcean {
+                ref mut ocean_k2, ..
+            }
+            | ParticleComposition::SolidAtmosphereOcean {
+                ref mut ocean_k2, ..
+            } => {
+                //TODO change the input file format so the real part precedes imaginary part
+                // Combine the parts into Complex number type
+                let love_numbers = love_ocean[0]
+                    .iter()
+                    .zip(love_ocean[1].iter())
+                    .map(|(im, re)| c64(*re, *im))
+                    .collect::<Vec<Complex<f64>>>();
+
+                ocean_k2.init(&love_ocean[0], &love_numbers);
+            }
+            _ => unreachable!(),
+        }
     }
 
     pub fn initialise_cache(
@@ -347,7 +377,7 @@ impl Kaula {
                             .map(|(q, q_val)| {
                                 let q_factor = p_factor + (q as f64 - 7.);
                                 let term = q_factor * semi_minor_axis_ratio - p_factor;
-                                let imk2 = self.love_number.imaginary(m, p, q);
+                                let imk2 = self.love_number.k2(m, p, q).im;
                                 imk2 * q_val * term
                             })
                             .sum::<f64>()
@@ -399,7 +429,7 @@ impl Kaula {
                             .enumerate()
                             .take(mpq.q_max.into())
                             .skip(mpq.q_min.into())
-                            .map(|(q, q_val)| self.love_number.imaginary(m, p, q) * q_val)
+                            .map(|(q, q_val)| self.love_number.k2(m, p, q).im * q_val)
                             .sum::<f64>()
                             * m_val_p
                             * (term1 * (m as f64 * cos_inc - p_factor)
@@ -510,7 +540,7 @@ impl Kaula {
                             .enumerate()
                             .take(mpq.q_max.into())
                             .skip(mpq.q_min.into())
-                            .map(|(q, q_val)| self.love_number.real(m, p, q) * q_val)
+                            .map(|(q, q_val)| self.love_number.k2(m, p, q).re * q_val)
                             .sum::<f64>()
                             * m_val_p
                     })
@@ -545,9 +575,7 @@ impl Kaula {
                             .enumerate()
                             .take(mpq.q_max.into())
                             .skip(mpq.q_min.into())
-                            .map(|(q, q_val)| {
-                                self.love_number.imaginary(m, p, q) * q_val * p_factor
-                            })
+                            .map(|(q, q_val)| self.love_number.k2(m, p, q).im * q_val * p_factor)
                             .sum::<f64>()
                             * m_val_p
                     })
@@ -583,7 +611,7 @@ impl Kaula {
                             .enumerate()
                             .take(mpq.q_max.into())
                             .skip(mpq.q_min.into())
-                            .map(|(q, q_val)| self.love_number.imaginary(m, p, q) * q_val)
+                            .map(|(q, q_val)| self.love_number.k2(m, p, q).im * q_val)
                             .sum::<f64>()
                             * m_val_p
                     })
@@ -621,7 +649,7 @@ impl Kaula {
                             .skip(mpq.q_min.into())
                             .map(|(q, q_val)| {
                                 let q_factor = p_factor + (q as f64 - 7.);
-                                self.love_number.imaginary(m, p, q) * q_val * q_factor
+                                self.love_number.k2(m, p, q).im * q_val * q_factor
                             })
                             .sum::<f64>()
                             * m_val_p

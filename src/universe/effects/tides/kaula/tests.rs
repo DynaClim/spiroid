@@ -1,10 +1,11 @@
 use super::*;
-use crate::universe::effects::tides::kaula::love_number::tests::test_love_number;
+use crate::universe::effects::tides::kaula::love_number::tests::{
+    test_k2_interpolator, test_love_number,
+};
 use crate::universe::effects::tides::kaula::polynomials::tests::test_polynomials;
 use crate::universe::particles::planet::tests::test_planet_kaula;
 use crate::universe::particles::star::tests::test_star;
 use crate::universe::tests::TEST_TIME;
-
 use pretty_assertions::assert_eq;
 
 #[cfg(test)]
@@ -12,6 +13,7 @@ pub fn test_kaula() -> Kaula {
     let mut kaula = Kaula {
         particle_type: ParticleComposition::Solid {
             solid_file: "dummy".into(),
+            solid_k2: test_k2_interpolator(),
         },
         polynomials: test_polynomials(),
         love_number: test_love_number(),
@@ -22,6 +24,7 @@ pub fn test_kaula() -> Kaula {
         prev_inclination: f64::NAN,
         prev_eccentricity: f64::NAN,
     };
+
     let mpq = test_mpq();
     let planet = test_planet_kaula();
 

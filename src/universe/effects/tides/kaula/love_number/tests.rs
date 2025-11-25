@@ -104,7 +104,7 @@ fn _solid() {
     let mut planet = test_planet_kaula();
     planet.spin = 0.1;
     let star = test_star();
-    let particle_type = ParticleComposition::Solid {
+    let mut particle_type = ParticleComposition::Solid {
         solid_file: "dummy".into(),
         solid_k2: test_k2_interpolator(),
     };
@@ -115,7 +115,7 @@ fn _solid() {
         TEST_TIME,
         &planet,
         &star,
-        &particle_type,
+        &mut particle_type,
         &ThermalTideAtmosphereModel::Disabled,
         mpq,
     );

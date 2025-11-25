@@ -25,6 +25,7 @@ math-macros = { git = "https://github.com/DynaClim/math-macros.git" }
 integrators = { git = "https://github.com/DynaClim/integrators.git", features = ["derive"]}
 sci-file = { git = "https://github.com/DynaClim/sci-file.git" }
 simulation = { git = "https://github.com/DynaClim/simulation.git" }
+riptide = { git = "https://github.com/DynaClim/wtf-tides.git" }
 derive_more = { version = "2.0.1", features = ["add", "mul"] }
 num-complex = { version = "0.4.6", features = ["serde"] }
 
@@ -50,3 +51,6 @@ all = "warn"
 pedantic = "warn"
 inline_always = {level = "allow", priority = 1}
 must_use_candidate = {level = "allow", priority = 1}
+
+[profile.test]
+opt-level = 2

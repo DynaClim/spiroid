@@ -1,8 +1,8 @@
 use anyhow::Result;
 use rayon::prelude::*;
+use riptide::Layer;
 use sci_file::{DataStore, read_csv_rows_from_file, read_json_from_file};
 use spiroid_lib::{ParticleType, SECONDS_IN_YEAR, Simulation, StarCsv, Universe, UniverseIntegral};
-
 fn main() -> Result<()> {
     // Parse the command line arguments into one (or more) simulations.
     // Universe is the struct containig the state of the universe and corresponding derivation functions.
@@ -55,6 +55,11 @@ fn main() -> Result<()> {
                                 .for_each(|year| *year *= SECONDS_IN_YEAR);
                         }
                         liquid_k2.dimension_check()?;
+                    }
+                } else {
+                    if let Some(data_file) = kaula.internal_structure_file() {
+                        let layers = read_csv_rows_from_file::<Layer>(data_file)?;
+                        kaula.initialise_internal_structure(&layers);
                     }
                 }
                 if let ParticleType::Star(star) = &simulation.system.central_body.kind

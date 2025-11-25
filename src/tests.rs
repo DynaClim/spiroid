@@ -1,6 +1,7 @@
 use super::*;
 use postcard;
 use pretty_assertions::assert_eq;
+use riptide::Layer;
 use sci_file::{DataStore, OutputWriter, read_csv_rows_from_file, read_json_from_file};
 use simulation::Integrator;
 use simulation::simulation::InputConfig;
@@ -52,6 +53,11 @@ fn test_simulation(simulation: impl AsRef<Path>) -> Universe {
                         .for_each(|year| *year *= SECONDS_IN_YEAR);
                 }
                 liquid_k2.dimension_check().unwrap();
+            }
+        } else {
+            if let Some(data_file) = kaula.internal_structure_file() {
+                let layers = read_csv_rows_from_file::<Layer>(data_file).unwrap();
+                kaula.initialise_internal_structure(&layers);
             }
         }
         if let ParticleType::Star(star) = &simulation.system.central_body.kind
@@ -199,6 +205,13 @@ fn example_planet_kaula_solid_tides_1d_interpolation() {
 #[test]
 fn example_planet_kaula_solid_tides_2d_interpolation() {
     let (config, expected) = make_testcase_paths("planet_kaula_solid_tides_2d_interpolation");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
+}
+
+#[test]
+fn example_planet_kaula_live_tides() {
+    let (config, expected) = make_testcase_paths("planet_kaula_live_tides");
     let result = test_simulation(&config);
     compare_or_create(&expected, &result);
 }

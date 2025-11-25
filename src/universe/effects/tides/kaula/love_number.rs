@@ -1,6 +1,7 @@
 use crate::constants::{GAS_CONSTANT, GRAVITATIONAL, PI, SECONDS_IN_DAY, SOLAR_LUMINOSITY};
 use crate::universe::effects::tides::kaula::Mpq;
 use crate::universe::particles::ParticleT;
+use riptide::InternalStructure;
 use sci_file::DataStore;
 
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,13 @@ use num_complex::{Complex, c64};
 pub enum ParticleComposition {
     #[default]
     None,
+    Layered {
+        data_file: PathBuf,
+        default_k2_re: f64,
+        default_k2_im: f64,
+        #[serde(default)]
+        internal_structure: InternalStructure,
+    },
     Solid {
         solid_file: PathBuf,
         #[serde(skip)]
@@ -119,7 +127,7 @@ impl LoveNumber {
         time: f64,
         planet: &impl ParticleT,
         star: &impl ParticleT,
-        particle_type: &ParticleComposition,
+        particle_type: &mut ParticleComposition,
         thermal_tide_model: &ThermalTideAtmosphereModel,
         mpq: Mpq,
     ) -> Result<()> {
@@ -150,10 +158,14 @@ impl LoveNumber {
                         )?;
                         // Add to cache
                         self.set_k2(m, p, q, k2);
+                        //                        println!("freq: {w_2lmpq}");
+                        //                        println!("k2_re: {}", k2.re);
+                        //                        println!("k2_im: {}", k2.im);
                     }
                 }
             }
         }
+        //        panic!();
         Ok(())
     }
 
@@ -163,7 +175,7 @@ impl LoveNumber {
         tidal_frequency: f64,
         planet: &impl ParticleT,
         star: &impl ParticleT,
-        particle_type: &ParticleComposition,
+        particle_type: &mut ParticleComposition,
         thermal_tide_model: &ThermalTideAtmosphereModel,
     ) -> Result<Complex<f64>> {
         // Depending on inteprolation table, a 1D (tidal_frequency) or 2D (tidal_frequency, time) interpolator is used.
@@ -185,6 +197,21 @@ impl LoveNumber {
             } => {
                 solid_k2.fetch_2d(abs!(tidal_frequency), time)?
                     + liquid_k2.fetch_2d(abs!(tidal_frequency), time)?
+            }
+            // Live love number calculation
+            ParticleComposition::Layered {
+                internal_structure,
+                default_k2_re,
+                default_k2_im,
+                ..
+            } => {
+                if tidal_frequency == 0.0 {
+                    c64(-*default_k2_re, *default_k2_im)
+                } else {
+                    internal_structure.refresh(tidal_frequency)?;
+                    let k2 = internal_structure.k2_complex();
+                    c64(-k2.re, k2.im)
+                }
             }
         };
 

@@ -8,6 +8,7 @@ mod polynomials;
 
 use love_number::{LoveNumber, ParticleComposition, ThermalTideAtmosphereModel};
 use polynomials::Polynomials;
+use riptide::Layer;
 
 use crate::universe::particles::{ParticleT, Planet};
 use derive_more::Add;
@@ -72,7 +73,17 @@ pub struct Kaula {
 
 impl Kaula {
     pub fn interpolation_mode(&self) -> bool {
-        !matches!(self.particle_type, ParticleComposition::None)
+        match self.particle_type {
+            ParticleComposition::Layered { .. } | ParticleComposition::None => false,
+            _ => true,
+        }
+    }
+
+    pub fn internal_structure_file(&self) -> Option<&PathBuf> {
+        match self.particle_type {
+            ParticleComposition::Layered { ref data_file, .. } => Some(data_file),
+            _ => None,
+        }
     }
 
     pub fn solid_file(&mut self) -> Option<(&PathBuf, &mut DataStore<Complex<f64>>)> {
@@ -94,6 +105,15 @@ impl Kaula {
                 ..
             } => Some((liquid_file, liquid_k2)),
             _ => None,
+        }
+    }
+
+    pub fn initialise_internal_structure(&mut self, layers: &[Layer]) {
+        if let ParticleComposition::Layered {
+            internal_structure, ..
+        } = &mut self.particle_type
+        {
+            internal_structure.layers(layers).init();
         }
     }
 
@@ -186,7 +206,7 @@ impl Kaula {
                 time,
                 planet,
                 star,
-                &self.particle_type,
+                &mut self.particle_type,
                 &self.atmosphere_model,
                 mpq,
             )?;

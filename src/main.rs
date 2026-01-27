@@ -56,12 +56,11 @@ fn main() -> Result<()> {
                         }
                         liquid_k2.dimension_check()?;
                     }
-                } else {
-                    if let Some(data_file) = kaula.internal_structure_file() {
-                        let layers = read_csv_rows_from_file::<Layer>(data_file)?;
-                        kaula.initialise_internal_structure(&layers);
-                    }
+                } else if let Some(data_file) = kaula.internal_structure_file() {
+                    let layers = read_csv_rows_from_file::<Layer>(data_file)?;
+                    kaula.initialise_internal_structure(&layers);
                 }
+
                 if let ParticleType::Star(star) = &simulation.system.central_body.kind
                     && let ParticleType::Planet(planet) = &simulation.system.orbiting_body.kind
                 {

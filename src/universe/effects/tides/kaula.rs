@@ -73,10 +73,10 @@ pub struct Kaula {
 
 impl Kaula {
     pub fn interpolation_mode(&self) -> bool {
-        match self.particle_type {
-            ParticleComposition::Layered { .. } | ParticleComposition::None => false,
-            _ => true,
-        }
+        !matches!(
+            self.particle_type,
+            ParticleComposition::Layered { .. } | ParticleComposition::None
+        )
     }
 
     pub fn internal_structure_file(&self) -> Option<&PathBuf> {

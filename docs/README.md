@@ -211,8 +211,8 @@ Set the `tides` property of the `orbiting_body` particle to `KaulaTides`, specif
 The format of the file must be CSV (Comma Separated Values) with the following header and fields:
 
 - `tidal_frequency`
-- `imaginary_love_number`
 - `real_love_number`
+- `imaginary_love_number`
 
 ## Testing
 Run the built in tests:

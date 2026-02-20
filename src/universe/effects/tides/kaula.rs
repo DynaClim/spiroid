@@ -123,7 +123,7 @@ impl Kaula {
                 let love_numbers = love_solid[1]
                     .iter()
                     .zip(love_solid[2].iter())
-                    .map(|(im, re)| c64(*re, *im))
+                    .map(|(re, im)| c64(*re, *im))
                     .collect::<Vec<Complex<f64>>>();
                 solid_k2.init(&love_solid[0], &love_numbers)?;
             }
@@ -144,7 +144,7 @@ impl Kaula {
                 let love_numbers = love_ocean[0]
                     .iter()
                     .zip(love_ocean[1].iter())
-                    .map(|(im, re)| c64(*re, *im))
+                    .map(|(re, im)| c64(*re, *im))
                     .collect::<Vec<Complex<f64>>>();
 
                 ocean_k2.init(&love_ocean[0], &love_numbers)?;

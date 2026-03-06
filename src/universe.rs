@@ -6,8 +6,14 @@ pub use effects::Kaula;
 pub use particles::{Particle, ParticleType, Planet, Star, StarCsv};
 
 use anyhow::Result;
+use derive_more::{Add, Div, Mul, Sub};
 use serde::{Deserialize, Serialize};
+use simulation::DopriNumOps;
 
+// Returns true if number is denormal
+fn denormal_check(num: f64) -> bool {
+    !(num == 0.0 || num.is_normal())
+}
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub enum UniverseKind {
     StarPlanet,
@@ -23,9 +29,211 @@ pub struct Universe {
     #[serde(default)]
     pub disk_is_dissipated: bool,
     #[serde(default)]
-    pub derivatives: Vec<f64>,
-    pub orbiting_body: Particle,
+    pub derivatives: UniverseIntegral,
+    /// The central body of the simulation, e.g. the star.
     pub central_body: Particle,
+    /// The oribiting body of the simulation, e.g. the planet.
+    pub orbiting_body: Particle,
+}
+
+#[derive(
+    Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Default, Add, Mul, Div, Sub, DopriNumOps,
+)]
+#[mul(forward)]
+#[div(forward)]
+pub struct UniverseIntegral {
+    central_body: StarIntegral,
+    orbiting_body: PlanetIntegral,
+}
+
+// Manually implementing Mul<f64>
+// Deriving Mul not possible for both Mul<Self> and Mul<T>
+// https://github.com/JelteF/derive_more/issues/361
+// https://github.com/JelteF/derive_more/pull/450
+impl<T> std::ops::Mul<T> for UniverseIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Mul<T, Output = f64>,
+{
+    type Output = UniverseIntegral;
+    fn mul(self, scalar: T) -> UniverseIntegral {
+        UniverseIntegral {
+            central_body: self.central_body * scalar,
+            orbiting_body: self.orbiting_body * scalar,
+        }
+    }
+}
+impl<T> std::ops::Add<T> for UniverseIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Add<T, Output = f64>,
+{
+    type Output = UniverseIntegral;
+    fn add(self, scalar: T) -> UniverseIntegral {
+        UniverseIntegral {
+            central_body: self.central_body + scalar,
+            orbiting_body: self.orbiting_body + scalar,
+        }
+    }
+}
+
+impl UniverseIntegral {
+    fn zero(&mut self) {
+        self.central_body.zero();
+        self.orbiting_body.zero();
+    }
+    fn denormal_check(&self) -> bool {
+        self.central_body.denormal_check() || self.orbiting_body.denormal_check()
+    }
+}
+
+#[derive(
+    Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Default, Add, Mul, Div, Sub, DopriNumOps,
+)]
+#[mul(forward)]
+#[div(forward)]
+struct StarIntegral {
+    radiative_zone_angular_momentum: f64,
+    convective_zone_angular_momentum: f64,
+}
+
+impl StarIntegral {
+    // Creates initial quantities to be integrated for the particle.
+    fn new(star: &Star) -> StarIntegral {
+        StarIntegral {
+            radiative_zone_angular_momentum: star.spin * star.radiative_moment_of_inertia,
+            convective_zone_angular_momentum: star.spin * star.convective_moment_of_inertia,
+        }
+    }
+
+    fn zero(&mut self) {
+        self.radiative_zone_angular_momentum = 0.0;
+        self.convective_zone_angular_momentum = 0.0;
+    }
+    fn denormal_check(&self) -> bool {
+        denormal_check(self.radiative_zone_angular_momentum)
+            || denormal_check(self.convective_zone_angular_momentum)
+    }
+}
+impl<T> std::ops::Mul<T> for StarIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Mul<T, Output = f64>,
+{
+    type Output = StarIntegral;
+    fn mul(self, scalar: T) -> StarIntegral {
+        StarIntegral {
+            radiative_zone_angular_momentum: self.radiative_zone_angular_momentum * scalar,
+            convective_zone_angular_momentum: self.convective_zone_angular_momentum * scalar,
+        }
+    }
+}
+impl<T> std::ops::Add<T> for StarIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Add<T, Output = f64>,
+{
+    type Output = StarIntegral;
+    fn add(self, scalar: T) -> StarIntegral {
+        StarIntegral {
+            radiative_zone_angular_momentum: self.radiative_zone_angular_momentum + scalar,
+            convective_zone_angular_momentum: self.convective_zone_angular_momentum + scalar,
+        }
+    }
+}
+
+// Only if kaula tides are enabled on the planet:
+#[derive(
+    Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Default, Add, Mul, Div, Sub, DopriNumOps,
+)]
+#[mul(forward)]
+#[div(forward)]
+struct PlanetIntegral {
+    // semi-major axis^6.5
+    semi_major_axis: f64,
+    // spin
+    spin: f64,
+    // orbital eccentricity^2
+    eccentricity: f64,
+    // orbital inclination (with respect to the planet equatorial plane)
+    inclination: f64,
+    // longitude of ascending node
+    longitude_ascending_node: f64,
+    // argument of periapsis
+    pericentre_omega: f64,
+    // spin axis inclination (with respect to the total angular momentum)
+    spin_inclination: f64,
+}
+impl PlanetIntegral {
+    // Creates initial quantities to be integrated for the particle.
+    fn new(planet: &Planet) -> PlanetIntegral {
+        PlanetIntegral {
+            // The actual integrated quantity is sma^6.5.
+            // See comment for planet_semi_major_axis_13_div_2_derivative
+            semi_major_axis: planet.semi_major_axis.powf(6.5),
+            spin: planet.spin,
+            // The actual integrated quantity is eccentricity^2 to avoid singularities when eccentricity goes to 0.
+            eccentricity: planet.eccentricity.powi(2),
+            inclination: planet.inclination,
+            longitude_ascending_node: planet.longitude_ascending_node,
+            pericentre_omega: planet.pericentre_omega,
+            spin_inclination: planet.spin_inclination,
+        }
+    }
+    fn zero(&mut self) {
+        self.semi_major_axis = 0.0;
+        self.spin = 0.0;
+        self.eccentricity = 0.0;
+        self.inclination = 0.0;
+        self.longitude_ascending_node = 0.0;
+        self.pericentre_omega = 0.0;
+        self.spin_inclination = 0.0;
+    }
+    fn denormal_check(&self) -> bool {
+        denormal_check(self.semi_major_axis)
+            || denormal_check(self.spin)
+            || denormal_check(self.eccentricity)
+            || denormal_check(self.inclination)
+            || denormal_check(self.longitude_ascending_node)
+            || denormal_check(self.pericentre_omega)
+            || denormal_check(self.spin_inclination)
+    }
+}
+impl<T> std::ops::Mul<T> for PlanetIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Mul<T, Output = f64>,
+{
+    type Output = PlanetIntegral;
+    fn mul(self, scalar: T) -> PlanetIntegral {
+        PlanetIntegral {
+            semi_major_axis: self.semi_major_axis * scalar,
+            spin: self.spin * scalar,
+            eccentricity: self.eccentricity * scalar,
+            inclination: self.inclination * scalar,
+            longitude_ascending_node: self.longitude_ascending_node * scalar,
+            pericentre_omega: self.pericentre_omega * scalar,
+            spin_inclination: self.spin_inclination * scalar,
+        }
+    }
+}
+impl<T> std::ops::Add<T> for PlanetIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Add<T, Output = f64>,
+{
+    type Output = PlanetIntegral;
+    fn add(self, scalar: T) -> PlanetIntegral {
+        PlanetIntegral {
+            semi_major_axis: self.semi_major_axis + scalar,
+            spin: self.spin + scalar,
+            eccentricity: self.eccentricity + scalar,
+            inclination: self.inclination + scalar,
+            longitude_ascending_node: self.longitude_ascending_node + scalar,
+            pericentre_omega: self.pericentre_omega + scalar,
+            spin_inclination: self.spin_inclination + scalar,
+        }
+    }
 }
 
 impl Universe {
@@ -54,52 +262,25 @@ impl Universe {
         }
     }
 
-    // Creates a vector of initial quantities to be integrated for the particle.
-    fn integration_quantities_per_particle(particle: &Particle) -> Vec<f64> {
-        let mut vec = vec![];
+    // Creates a vector of initial quantities to be integrated, depending on the simulation configuration.
+    pub fn integration_quantities(&self) -> UniverseIntegral {
+        match self.universe_kind() {
+            UniverseKind::StarPlanet => {
+                let ParticleType::Star(star) = &self.central_body.kind else {
+                    unreachable!()
+                };
+                let ParticleType::Planet(planet) = &self.orbiting_body.kind else {
+                    unreachable!()
+                };
 
-        match &particle.kind {
-            ParticleType::Star(star) => vec.append(&mut vec![
-                star.spin * star.radiative_moment_of_inertia,
-                star.spin * star.convective_moment_of_inertia,
-            ]),
-            ParticleType::Planet(planet) => {
-                // The actual integrated quantity is sma^6.5.
-                // See comment for planet_semi_major_axis_13_div_2_derivative
-                vec.append(&mut vec![planet.semi_major_axis.powf(6.5)]);
-
-                if particle.tides.kaula_enabled() {
-                    vec.append(&mut vec![
-                        planet.spin,
-                        // The actual integrated quantity is eccentricity^2 to avoid singularities when eccentricity goes to 0.
-                        planet.eccentricity.powi(2),
-                        planet.inclination,
-                        planet.longitude_ascending_node,
-                        planet.pericentre_omega,
-                        planet.spin_inclination,
-                    ]);
+                UniverseIntegral {
+                    central_body: StarIntegral::new(star),
+                    orbiting_body: PlanetIntegral::new(planet),
                 }
             }
+            UniverseKind::BinaryStar => todo!(),
+            UniverseKind::PlanetMoon => todo!(),
         }
-
-        vec
-    }
-
-    // Creates a vector of initial quantities to be integrated, depending on the simulation configuration.
-    pub fn integration_quantities(&mut self) -> Vec<f64> {
-        let mut vec = vec![];
-
-        vec.append(&mut Self::integration_quantities_per_particle(
-            &self.central_body,
-        ));
-        vec.append(&mut Self::integration_quantities_per_particle(
-            &self.orbiting_body,
-        ));
-
-        // Initialise the empty buffer to hold the derivatives for output.
-        self.derivatives = vec![0.; vec.len()];
-
-        vec
     }
 
     // Provide values to bound the subsequent step size
@@ -119,26 +300,30 @@ impl Universe {
     }
 
     // Update routine for a Star Planet simulation.
-    fn update_star_planet(&mut self, y: &[f64]) -> Result<()> {
+    fn update_star_planet(&mut self, new_state: &UniverseIntegral) -> Result<()> {
         // ***WARNING!***
         // Stateful function
         // The order of these calculations is important.
         // Lower order calculations depend on previous values.
         // ***WARNING!***
-
         let &mut ParticleType::Star(ref mut star) = &mut self.central_body.kind else {
             unreachable!()
         };
         let &mut ParticleType::Planet(ref mut planet) = &mut self.orbiting_body.kind else {
             unreachable!()
         };
-        // Update radiative zone (y[0]) and convective zone (y[1]) angular momentum
+        // Update radiative zone and convective zone angular momentum
         // and recompute independent values.
-        star.refresh(self.time, y[0], y[1], self.disk_is_dissipated)?;
+        star.refresh(
+            self.time,
+            new_state.central_body.radiative_zone_angular_momentum,
+            new_state.central_body.convective_zone_angular_momentum,
+            self.disk_is_dissipated,
+        )?;
 
         // Invert the exponent of sma^6.5 to normalise the semi major axis.
         // Recompute planet values, including those depending on star.
-        planet.refresh(y[2].powf(2. / 13.), star);
+        planet.refresh(new_state.orbiting_body.semi_major_axis.powf(2. / 13.), star);
 
         // No torques during disk lifetime.
         if !self.disk_is_dissipated {
@@ -164,7 +349,14 @@ impl Universe {
         if self.orbiting_body.tides.kaula_enabled() {
             //(spin, eccentricity, inclination, longitude_ascending_node, pericentre_omega, spin_inclination)
             // Invert the exponent of e^2 to normalise the eccentricity.
-            planet.refresh_orbital_elements(y[3], sqrt!(y[4]), y[5], y[6], y[7], y[8]);
+            planet.refresh_orbital_elements(
+                new_state.orbiting_body.spin,
+                sqrt!(new_state.orbiting_body.eccentricity),
+                new_state.orbiting_body.inclination,
+                new_state.orbiting_body.longitude_ascending_node,
+                new_state.orbiting_body.pericentre_omega,
+                new_state.orbiting_body.spin_inclination,
+            );
             // Recompute the kaula tidal effects.
             self.orbiting_body
                 .tides
@@ -175,14 +367,14 @@ impl Universe {
     }
 
     // Update the planet and star values from the integrator prior to the derivation step.
-    pub(crate) fn update(&mut self, time: f64, y: &[f64]) -> Result<()> {
+    pub(crate) fn update(&mut self, time: f64, new_state: &UniverseIntegral) -> Result<()> {
         // Set the time.
         self.update_time(time);
         // Calculate the dissipation status of the disk.
         self.disk_is_dissipated();
 
         match self.universe_kind() {
-            UniverseKind::StarPlanet => self.update_star_planet(y)?,
+            UniverseKind::StarPlanet => self.update_star_planet(new_state)?,
             UniverseKind::BinaryStar => todo!(),
             UniverseKind::PlanetMoon => todo!(),
         }

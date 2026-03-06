@@ -8,26 +8,26 @@ pub use simulation::{Simulation, System};
 mod universe;
 
 use universe::physics::force;
-pub use universe::{ParticleType, Planet, Star, StarCsv, Universe};
+pub use universe::{ParticleType, Planet, Star, StarCsv, Universe, UniverseIntegral};
 
-impl System<f64> for Universe {
+impl System<UniverseIntegral> for Universe {
     // This `derive` function is called by the integrator.
     // It should call the function that calculates the derivatives of the integration quantities.
     // i.e. fill `dy` with the derivatives of `y` with respect to x (`time`).
     fn derive(
         &mut self,
         time: f64,
-        y: &[f64],
-        dy: &mut [f64],
+        y: &[UniverseIntegral],
+        dy: &mut [UniverseIntegral],
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Update the state of the universe based on the current integration values.
-        Universe::update(self, time, y)?;
+        Universe::update(self, time, &y[0])?;
         // Compute the derivatives using the updated values for the integrator.
         force(
             &self.central_body,
             &self.orbiting_body,
             self.disk_is_dissipated,
-            dy,
+            &mut dy[0],
         )?;
 
         Ok(())
@@ -38,10 +38,10 @@ impl System<f64> for Universe {
     fn update(
         &mut self,
         time: f64,
-        y: &[f64],
+        y: &[UniverseIntegral],
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Update the state of the universe based on the current integration values.
-        Universe::update(self, time, y)?;
+        Universe::update(self, time, &y[0])?;
         // Permanently clear destroyed particles.
         Universe::clear_destroyed_particles(self);
         // Compute the derivatives using the updated values to save for output.

@@ -20,11 +20,11 @@ fn _derivatives_magnetic() {
     let star = test_star_evolving();
     let planet = test_planet_magnetic();
 
-    let y = [
-        star.radiative_zone_angular_momentum,
-        star.convective_zone_angular_momentum,
-        planet.semi_major_axis.powf(6.5),
-    ];
+    let mut y = UniverseIntegral::default();
+    y.central_body.radiative_zone_angular_momentum = star.radiative_zone_angular_momentum;
+    y.central_body.convective_zone_angular_momentum = star.convective_zone_angular_momentum;
+    y.orbiting_body.semi_major_axis = planet.semi_major_axis.powf(6.5);
+
     let mut wind = IsothermalWind::default();
     wind.footpoint_conductance = 7e4;
 
@@ -44,10 +44,10 @@ fn _derivatives_magnetic() {
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
-        derivatives: vec![],
+        derivatives: UniverseIntegral::default(),
     };
-    let mut result = y.to_vec();
     universe.update(TEST_TIME, &y).unwrap();
+    let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,
         &universe.orbiting_body,
@@ -55,11 +55,12 @@ fn _derivatives_magnetic() {
         &mut result,
     )
     .unwrap();
-    let expected = vec![
-        -6.348994811695528e22,
-        1.6351930535408648e22,
-        -1.4634701453519956e43,
-    ];
+
+    let mut expected = UniverseIntegral::default();
+    expected.central_body.radiative_zone_angular_momentum = -6.348994811695528e22;
+    expected.central_body.convective_zone_angular_momentum = 1.6351930535408648e22;
+    expected.orbiting_body.semi_major_axis = -1.4634701453519956e43;
+
     assert_eq!(expected, result);
 }
 
@@ -68,11 +69,11 @@ fn _derivatives_tides() {
     let star = test_star_evolving();
     let planet = test_planet();
 
-    let y = [
-        star.radiative_zone_angular_momentum,
-        star.convective_zone_angular_momentum,
-        planet.semi_major_axis.powf(6.5),
-    ];
+    let mut y = UniverseIntegral::default();
+    y.central_body.radiative_zone_angular_momentum = star.radiative_zone_angular_momentum;
+    y.central_body.convective_zone_angular_momentum = star.convective_zone_angular_momentum;
+    y.orbiting_body.semi_major_axis = planet.semi_major_axis.powf(6.5);
+
     let mut universe = Universe {
         orbiting_body: Particle {
             kind: ParticleType::Planet(planet),
@@ -92,10 +93,11 @@ fn _derivatives_tides() {
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
-        derivatives: vec![],
+        derivatives: UniverseIntegral::default(),
     };
-    let mut result = y.to_vec();
+
     universe.update(TEST_TIME, &y).unwrap();
+    let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,
         &universe.orbiting_body,
@@ -103,11 +105,12 @@ fn _derivatives_tides() {
         &mut result,
     )
     .unwrap();
-    let expected = vec![
-        -6.348994811695528e22,
-        6.020027165936562e23,
-        -1.9848639097150575e44,
-    ];
+
+    let mut expected = UniverseIntegral::default();
+    expected.central_body.radiative_zone_angular_momentum = -6.348994811695528e22;
+    expected.central_body.convective_zone_angular_momentum = 6.020027165936562e23;
+    expected.orbiting_body.semi_major_axis = -1.9848639097150575e44;
+
     assert_eq!(expected, result);
 }
 
@@ -116,11 +119,10 @@ fn _derivatives_magnetic_tides() {
     let star = test_star_evolving();
     let planet = test_planet_magnetic();
 
-    let y = [
-        star.radiative_zone_angular_momentum,
-        star.convective_zone_angular_momentum,
-        planet.semi_major_axis.powf(6.5),
-    ];
+    let mut y = UniverseIntegral::default();
+    y.central_body.radiative_zone_angular_momentum = star.radiative_zone_angular_momentum;
+    y.central_body.convective_zone_angular_momentum = star.convective_zone_angular_momentum;
+    y.orbiting_body.semi_major_axis = planet.semi_major_axis.powf(6.5);
 
     let mut wind = IsothermalWind::default();
     wind.footpoint_conductance = 7e4;
@@ -144,10 +146,11 @@ fn _derivatives_magnetic_tides() {
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
-        derivatives: vec![],
+        derivatives: UniverseIntegral::default(),
     };
-    let mut result = y.to_vec();
+
     universe.update(TEST_TIME, &y).unwrap();
+    let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,
         &universe.orbiting_body,
@@ -155,11 +158,12 @@ fn _derivatives_magnetic_tides() {
         &mut result,
     )
     .unwrap();
-    let expected = vec![
-        -6.348994811695528e22,
-        6.486208599049978e23,
-        -2.131210924250257e44,
-    ];
+
+    let mut expected = UniverseIntegral::default();
+    expected.central_body.radiative_zone_angular_momentum = -6.348994811695528e22;
+    expected.central_body.convective_zone_angular_momentum = 6.486208599049978e23;
+    expected.orbiting_body.semi_major_axis = -2.131210924250257e44;
+
     assert_eq!(expected, result);
 }
 
@@ -167,17 +171,15 @@ fn _derivatives_magnetic_tides() {
 fn _derivatives_kaula() {
     let star = test_star();
     let planet = test_planet_kaula();
-    let y = [
-        0.0,
-        0.0,
-        planet.semi_major_axis.powf(6.5),
-        8.062093352143078e-7,
-        2.500000000179822e-5,
-        0.34999207817863753,
-        1.0465602799892118,
-        -0.11536773671287792,
-        0.31581363067032314,
-    ];
+
+    let mut y = UniverseIntegral::default();
+    y.orbiting_body.semi_major_axis = planet.semi_major_axis.powf(6.5);
+    y.orbiting_body.spin = 8.062093352143078e-7;
+    y.orbiting_body.eccentricity = 2.500000000179822e-5;
+    y.orbiting_body.inclination = 0.34999207817863753;
+    y.orbiting_body.longitude_ascending_node = 1.0465602799892118;
+    y.orbiting_body.pericentre_omega = -0.11536773671287792;
+    y.orbiting_body.spin_inclination = 0.31581363067032314;
 
     let mut universe = Universe {
         orbiting_body: Particle {
@@ -195,10 +197,11 @@ fn _derivatives_kaula() {
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
-        derivatives: vec![],
+        derivatives: UniverseIntegral::default(),
     };
-    let mut result = y.to_vec();
+
     universe.update(TEST_TIME, &y).unwrap();
+    let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,
         &universe.orbiting_body,
@@ -206,17 +209,16 @@ fn _derivatives_kaula() {
         &mut result,
     )
     .unwrap();
-    let expected = vec![
-        0.0,
-        0.0,
-        3.0436830855775857e49,
-        -1.5432986377090881e-9,
-        5.129250165061513e-16,
-        0.0007011714730044864,
-        -0.0018601514572935667,
-        5.876804234917257e-6,
-        0.0003527171243323208,
-    ];
+
+    let mut expected = UniverseIntegral::default();
+    expected.orbiting_body.semi_major_axis = 3.0436830855775857e49;
+    expected.orbiting_body.spin = -1.5432986377090881e-9;
+    expected.orbiting_body.eccentricity = 5.129250165061513e-16;
+    expected.orbiting_body.inclination = 0.0007011714730044864;
+    expected.orbiting_body.longitude_ascending_node = -0.0018601514572935667;
+    expected.orbiting_body.pericentre_omega = 5.876804234917257e-6;
+    expected.orbiting_body.spin_inclination = 0.0003527171243323208;
+
     assert_eq!(expected, result);
 }
 

@@ -1,11 +1,13 @@
 use anyhow::Result;
 use rayon::prelude::*;
 use sci_file::{DataStore, read_csv_rows_from_file, read_json_from_file};
-use spiroid_lib::{ParticleType, SECONDS_IN_YEAR, Simulation, StarCsv, Universe};
+use spiroid_lib::{ParticleType, SECONDS_IN_YEAR, Simulation, StarCsv, Universe, UniverseIntegral};
 
 fn main() -> Result<()> {
     // Parse the command line arguments into one (or more) simulations.
-    let simulations = Simulation::<Universe>::new()?;
+    // Universe is the struct containig the state of the universe and corresponding derivation functions.
+    // UniverseIntegral contains the quantities that are to be integrated.
+    let simulations = Simulation::<Universe, UniverseIntegral>::new()?;
 
     // Read in necessary data tables and launch the simulations in parallel.
     simulations
@@ -79,7 +81,7 @@ fn main() -> Result<()> {
             // y[7] = Planet argument of periapsis
             // y[8] = Planet spin axis inclination (with respect to the total angular momentum)
 
-            simulation.launch(simulation.initial_time, simulation.final_time, &y)?;
+            simulation.launch(simulation.initial_time, simulation.final_time, &[y])?;
             Ok(())
         })
         .collect::<Result<()>>()?;

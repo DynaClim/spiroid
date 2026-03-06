@@ -1,15 +1,15 @@
 use crate::constants::GRAVITATIONAL;
 use crate::universe::effects::tides::TidalModel;
-use crate::universe::{Kaula, Particle, ParticleType, Planet, Star};
+use crate::universe::{Kaula, Particle, ParticleType, Planet, Star, UniverseIntegral};
 use anyhow::{Result, bail};
 
 pub(crate) fn force(
     central_body: &Particle,
     orbiting_body: &Particle,
     disk_is_dissipated: bool,
-    dy: &mut [f64],
+    dy: &mut UniverseIntegral,
 ) -> Result<()> {
-    dy.fill(0.0);
+    dy.zero();
 
     let ParticleType::Star(star) = &central_body.kind else {
         todo!();
@@ -20,8 +20,10 @@ pub(crate) fn force(
     };
 
     // Star derivatives
-    dy[0] = star_radiative_zone_angular_momentum_derivative(star);
-    dy[1] = star_convective_zone_angular_momentum_derivative(star, disk_is_dissipated);
+    dy.central_body.radiative_zone_angular_momentum =
+        star_radiative_zone_angular_momentum_derivative(star);
+    dy.central_body.convective_zone_angular_momentum =
+        star_convective_zone_angular_momentum_derivative(star, disk_is_dissipated);
 
     // If the planet does not exist, only the star derivatives are computed.
     // i.e. during the disk lifetime, or after the planet is destroyed.
@@ -31,29 +33,32 @@ pub(crate) fn force(
 
     // Constant time lag semi major axis derivative.
     // Is 0 if tides are disabled on the star.
-    dy[2] = planet_semi_major_axis_13_div_2_derivative(planet, star);
+    dy.orbiting_body.semi_major_axis = planet_semi_major_axis_13_div_2_derivative(planet, star);
 
     // Immutable borrow of kaula properties if kaula planet tides enabled.
     if let TidalModel::KaulaTides(ref kaula) = orbiting_body.tides {
         // Sum the semi major axis derivative to account for both CTL star tide (if enabled) and Kaula planet tide.
-        dy[2] += kaula_planet_semi_major_axis_13_div_2_derivative(planet, star, kaula);
+        dy.orbiting_body.semi_major_axis +=
+            kaula_planet_semi_major_axis_13_div_2_derivative(planet, star, kaula);
 
-        dy[3] = planet_spin_derivative(planet, star, kaula);
-        dy[4] = planet_eccentricity_derivative(planet, star, kaula);
-        dy[5] = planet_inclination_derivative(planet, star, kaula);
-        dy[6] = planet_longitude_ascending_node_derivative(planet, star, kaula);
-        dy[7] = planet_argument_pericentre_derivative(planet, star, kaula);
-        dy[8] = planet_spin_axis_inclination_derivative(planet, star, kaula);
+        dy.orbiting_body.spin = planet_spin_derivative(planet, star, kaula);
+        dy.orbiting_body.eccentricity = planet_eccentricity_derivative(planet, star, kaula);
+        dy.orbiting_body.inclination = planet_inclination_derivative(planet, star, kaula);
+        dy.orbiting_body.longitude_ascending_node =
+            planet_longitude_ascending_node_derivative(planet, star, kaula);
+        dy.orbiting_body.pericentre_omega =
+            planet_argument_pericentre_derivative(planet, star, kaula);
+        dy.orbiting_body.spin_inclination =
+            planet_spin_axis_inclination_derivative(planet, star, kaula);
     }
 
-    for val in dy.iter() {
-        if *val != 0.0 && !val.is_normal() {
-            let msg = format!("{:?}, {:?}, dy: {:?}", &star, &planet, &dy);
-            eprintln!("{}", &msg);
-            bail!(
-                "error in computation of derivatives: Houston, we have a NaN...infinity, and beyond! {msg}"
-            );
-        }
+    // Check the derivatives for numerical errors.
+    if dy.denormal_check() {
+        let msg = format!("{:?}, {:?}, dy: {:?}", &star, &planet, &dy);
+        eprintln!("{}", &msg);
+        bail!(
+            "error in computation of derivatives: Houston, we have a NaN...infinity, and beyond! {msg}"
+        );
     }
 
     Ok(())

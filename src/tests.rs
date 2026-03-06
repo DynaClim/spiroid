@@ -8,7 +8,8 @@ use std::path::Path;
 
 fn test_simulation(simulation: impl AsRef<Path>) -> Universe {
     // Parse the config file.
-    let mut simulation: InputConfig<Universe> = read_json_from_file(&simulation).unwrap();
+    let mut simulation: InputConfig<Universe, UniverseIntegral> =
+        read_json_from_file(&simulation).unwrap();
     // Load stellar evolution data from file.
     if let ParticleType::Star(star) = &mut simulation.system.central_body.kind {
         // Load stellar evolution data from file if stellar evolution is enabled.
@@ -72,7 +73,7 @@ fn test_simulation(simulation: impl AsRef<Path>) -> Universe {
     let y = simulation.system.integration_quantities();
     simulation
         .integrator
-        .initialise(simulation.initial_time, simulation.final_time, &y);
+        .initialise(simulation.initial_time, simulation.final_time, &[y]);
 
     // Run the full integration.
     let _ = simulation
@@ -117,7 +118,7 @@ fn compare_or_create(path: impl AsRef<Path> + std::fmt::Display, result: &Univer
 fn serde_roundtrip() {
     let (config, _) = make_testcase_paths("all_effects");
 
-    let config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
+    let config: InputConfig<Universe, UniverseIntegral> = read_json_from_file(&config).unwrap();
     let universe = config.system;
 
     let tmp = serde_json::to_string(&universe).unwrap();
@@ -130,7 +131,7 @@ fn serde_roundtrip() {
 fn postcard_roundtrip() {
     let (config, _) = make_testcase_paths("all_effects");
 
-    let config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
+    let config: InputConfig<Universe, UniverseIntegral> = read_json_from_file(&config).unwrap();
     let universe = config.system;
 
     let tmp = postcard::to_stdvec(&universe).unwrap();

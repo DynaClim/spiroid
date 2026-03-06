@@ -34,6 +34,9 @@ pub struct Universe {
     pub central_body: Particle,
     /// The oribiting body of the simulation, e.g. the planet.
     pub orbiting_body: Particle,
+    /// The perturbing body of the simulation, acting on the orbiting body. e.g. a distant star or planet.
+    #[serde(default)]
+    pub perturbing_body: Option<Particle>,
 }
 
 #[derive(
@@ -44,6 +47,7 @@ pub struct Universe {
 pub struct UniverseIntegral {
     central_body: StarIntegral,
     orbiting_body: PlanetIntegral,
+    perturbing_body: PerturberIntegral,
 }
 
 // Manually implementing Mul<f64>
@@ -60,6 +64,7 @@ where
         UniverseIntegral {
             central_body: self.central_body * scalar,
             orbiting_body: self.orbiting_body * scalar,
+            perturbing_body: self.perturbing_body * scalar,
         }
     }
 }
@@ -73,6 +78,7 @@ where
         UniverseIntegral {
             central_body: self.central_body + scalar,
             orbiting_body: self.orbiting_body + scalar,
+            perturbing_body: self.perturbing_body + scalar,
         }
     }
 }
@@ -81,12 +87,14 @@ impl UniverseIntegral {
     fn zero(&mut self) {
         self.central_body.zero();
         self.orbiting_body.zero();
+        self.perturbing_body.zero();
     }
     fn denormal_check(&self) -> bool {
-        self.central_body.denormal_check() || self.orbiting_body.denormal_check()
+        self.central_body.denormal_check()
+            || self.orbiting_body.denormal_check()
+            || self.perturbing_body.denormal_check()
     }
 }
-
 #[derive(
     Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Default, Add, Mul, Div, Sub, DopriNumOps,
 )]
@@ -236,6 +244,69 @@ where
     }
 }
 
+// Only if a perturbing body is enabled:
+#[derive(
+    Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Default, Add, Mul, Div, Sub, DopriNumOps,
+)]
+#[mul(forward)]
+#[div(forward)]
+struct PerturberIntegral {
+    // orbital eccentricity^2
+    eccentricity: f64,
+    // longitude of ascending node
+    longitude_ascending_node: f64,
+}
+
+impl PerturberIntegral {
+    // Creates initial quantities to be integrated for the particle.
+    fn new(perturber: &Particle) -> PerturberIntegral {
+        if let ParticleType::Planet(planet) = &perturber.kind {
+            // Perturber is a planet
+            PerturberIntegral {
+                eccentricity: planet.eccentricity,
+                longitude_ascending_node: planet.longitude_ascending_node,
+            }
+        } else {
+            // Perturber is a star
+            todo!()
+        }
+    }
+
+    fn zero(&mut self) {
+        self.eccentricity = 0.0;
+        self.longitude_ascending_node = 0.0;
+    }
+    fn denormal_check(&self) -> bool {
+        denormal_check(self.eccentricity) || denormal_check(self.longitude_ascending_node)
+    }
+}
+impl<T> std::ops::Mul<T> for PerturberIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Mul<T, Output = f64>,
+{
+    type Output = PerturberIntegral;
+    fn mul(self, scalar: T) -> PerturberIntegral {
+        PerturberIntegral {
+            eccentricity: self.eccentricity * scalar,
+            longitude_ascending_node: self.longitude_ascending_node * scalar,
+        }
+    }
+}
+impl<T> std::ops::Add<T> for PerturberIntegral
+where
+    T: Clone + Copy,
+    f64: std::ops::Add<T, Output = f64>,
+{
+    type Output = PerturberIntegral;
+    fn add(self, scalar: T) -> PerturberIntegral {
+        PerturberIntegral {
+            eccentricity: self.eccentricity + scalar,
+            longitude_ascending_node: self.longitude_ascending_node + scalar,
+        }
+    }
+}
+
 impl Universe {
     /// Initialise the `Star` and `Planet`.
     /// # Errors
@@ -245,6 +316,9 @@ impl Universe {
     pub fn initialise(&mut self, time: f64) -> Result<()> {
         self.central_body.initialise(time)?;
         self.orbiting_body.initialise(time)?;
+        if let Some(perturbing_body) = &mut self.perturbing_body {
+            perturbing_body.initialise(time)?;
+        }
 
         Ok(())
     }
@@ -276,6 +350,10 @@ impl Universe {
                 UniverseIntegral {
                     central_body: StarIntegral::new(star),
                     orbiting_body: PlanetIntegral::new(planet),
+                    perturbing_body: match &self.perturbing_body {
+                        Some(perturber) => PerturberIntegral::new(perturber),
+                        None => PerturberIntegral::default(),
+                    },
                 }
             }
             UniverseKind::BinaryStar => todo!(),

@@ -1,6 +1,6 @@
 {
     "Interpolate1D": {
-        "description": "x_vals: tidal frequency (f64). data: love_number_k2 (complex<f64> [real, imag]). 2-D interpolator for love numbers from leconte_steinberger.",
+        "info": "x_vals: tidal frequency (f64). data: love_number_k2 (complex<f64> [real, imag]). 2-D interpolator for love numbers from leconte_steinberger.",
         "x_vals": [
             0.0,
             1e-16,

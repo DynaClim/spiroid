@@ -1,6 +1,6 @@
 {
     "Interpolate2D": {
-        "description": "mystery number: 6051800. x_vals: time (years). y_vals: tidal frequency (f64). data: love_number_k2 (complex<f64> [real, imag]). 2-D interpolator for love numbers from leconte_steinberger.",
+        "info": "mystery number: 6051800. x_vals: time (years). y_vals: tidal frequency (f64). data: love_number_k2 (complex<f64> [real, imag]). 2-D interpolator for love numbers from leconte_steinberger.",
         "x_vals": [
             1.0e9,
             1.1e9,

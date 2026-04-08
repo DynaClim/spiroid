@@ -50,7 +50,7 @@ def simulator_setup():
         "start_time": SECONDS_IN_YEAR * 1.0e9,
         # Simulation end time, seconds (from years).
         # Integrate for 1 Myr to accumulate measurable precession.
-        "final_time": SECONDS_IN_YEAR * (1.0e9 + 1.0e6),
+        "final_time": SECONDS_IN_YEAR * (1.0e9 + 5.0e6),
     }
 
     # seconds (from years) — short disk, dissipated well before start_time
@@ -106,7 +106,7 @@ def planet_setup(effects):
     return planet_base
 
 
-def star_setup(_effects):
+def star_setup(effects):
     ##############################################################
     ####################### STAR SETUP ###########################
     ##############################################################
@@ -122,12 +122,17 @@ def star_setup(_effects):
         "sigma_bar": [None],  # Do not edit.
     }
 
-    # Star evolution disabled: set initial stellar values manually.
-    # Must be non-zero (to avoid NaN).
-    star_base["mass"] = [SOLAR_MASS]
-    star_base["radius"] = [SOLAR_RADIUS]
-    star_base["radiative_moment_of_inertia"] = [1.0]
-    star_base["convective_moment_of_inertia"] = [1.0]
+    if effects["STAR_EVOLUTION_ENABLED"]:
+        star_base["evolution"] = [
+            {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_10.csv"}}
+        ]
+    else:
+        # Set the initial star values that would otherwise be provided by evolution data.
+        # Must be non-zero (to avoid NaN).
+        star_base["mass"] = [SOLAR_MASS]
+        star_base["radius"] = [SOLAR_RADIUS]
+        star_base["radiative_moment_of_inertia"] = [1.0]
+        star_base["convective_moment_of_inertia"] = [1.0]
 
     return star_base
 

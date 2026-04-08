@@ -1,0 +1,101 @@
+{
+  "time": 3.15891576e+16,
+  "disk_lifetime": 31557600000000.0,
+  "disk_is_dissipated": true,
+  "derivatives": {
+    "central_body": {
+      "radiative_zone_angular_momentum": 0.0,
+      "convective_zone_angular_momentum": 0.0
+    },
+    "orbiting_body": {
+      "semi_major_axis": 0.0,
+      "spin": 0.0,
+      "eccentricity": 0.0,
+      "inclination": 0.0,
+      "longitude_ascending_node": 0.0,
+      "pericentre_omega": 0.0,
+      "spin_inclination": 0.0
+    },
+    "perturbing_body": {
+      "eccentricity": 0.0,
+      "longitude_ascending_node": 0.0
+    }
+  },
+  "central_body": {
+    "kind": {
+      "Star": {
+        "mass": 1.9884158606e+30,
+        "spin": 2.865e-6,
+        "core_envelope_coupling_constant": 369539496000000.0,
+        "evolution": "Disabled",
+        "age": 0.0,
+        "radius": 695700000.0,
+        "convective_radius": 0.0,
+        "radiative_mass": 0.0,
+        "convective_moment_of_inertia_derivative": 0.0,
+        "convective_moment_of_inertia": 1.0,
+        "radiative_moment_of_inertia": 1.0,
+        "radiative_mass_derivative": 0.0,
+        "luminosity": 0.0,
+        "dynamical_tide_dissipation": 0.0,
+        "convective_turnover_time": 616595001.861481,
+        "convective_turnover_time_sun": 2126270.90231897,
+        "angular_momentum_redistribution": 0.0,
+        "mass_transfer_envelope_to_core_torque": 0.0,
+        "rossby": 0.0035567655758328596,
+        "mass_loss_rate": 221634006530.8163,
+        "magnetic_field": 0.0,
+        "wind_torque": 0.0,
+        "alfven_radius": 0.0,
+        "tidal_quality": 0.0,
+        "tidal_frequency": 4.076644272868807e-6,
+        "magnetic_torque": 0.0,
+        "tidal_torque_convective": 0.0,
+        "evolved_wind_torque": 0.0,
+        "evolved_change_semi_major_axis": 0.0,
+        "evolved_mass_loss_rate": 0.0,
+        "terminal_wind_speed": 0.0,
+        "mass_accretion_efficiency": 0.0,
+        "wind_orbital_angular_momentum_loss": 0.0,
+        "convective_zone_angular_momentum": 2.865e-6,
+        "radiative_zone_angular_momentum": 2.865e-6
+      }
+    },
+    "tides": "Disabled",
+    "magnetism": "Disabled",
+    "wind": "Disabled",
+    "general_relativity": "Enabled"
+  },
+  "orbiting_body": {
+    "kind": {
+      "Planet": {
+        "mass": 3.3011e+23,
+        "radius": 2439700.0,
+        "semi_major_axis": 57909040000.00008,
+        "magnetic_field": 0.0,
+        "spin": 0.0,
+        "eccentricity": 0.20563,
+        "inclination": 0.0,
+        "longitude_ascending_node": 0.0,
+        "pericentre_omega": 2.083764291999924,
+        "spin_inclination": 0.0,
+        "radius_of_gyration_2": 0.0,
+        "luminosity": 0.0,
+        "atmosphere": "Disabled",
+        "magnetic_pressure": 0.0,
+        "mean_motion": 8.266778635655962e-7,
+        "roche_limit": 1074239963.6105788,
+        "orbit_lower_limit": 1074239963.6105788,
+        "density_ratio": 3.8495342984560557,
+        "reduced_mass": 3.3010994519627604e+23,
+        "moment_of_inertia": 0.0,
+        "is_destroyed": false
+      }
+    },
+    "tides": "Disabled",
+    "magnetism": "Disabled",
+    "wind": "Disabled",
+    "general_relativity": "Disabled"
+  },
+  "perturbing_body": null
+}

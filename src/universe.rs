@@ -361,6 +361,9 @@ impl Universe {
             self.orbiting_body
                 .tides
                 .refresh_kaula(self.time, star, planet)?;
+        } else if self.central_body.general_relativity.is_enabled() {
+            // GR only evolves pericentre_omega; no other orbital elements or trig caches need updating.
+            planet.pericentre_omega = new_state.orbiting_body.pericentre_omega;
         }
 
         Ok(())

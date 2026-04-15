@@ -1,4 +1,4 @@
-use crate::constants::GRAVITATIONAL;
+use crate::constants::{GRAVITATIONAL, SPEED_OF_LIGHT};
 use crate::universe::effects::tides::TidalModel;
 use crate::universe::{Kaula, Particle, ParticleType, Planet, Star, UniverseIntegral};
 use anyhow::{Result, bail};
@@ -218,7 +218,6 @@ mod tests;
 // dω/dt = 3 n³ a² / (c² (1 - e²))
 // Derived from dω/dt = 3 G M n / (c² a (1 - e²)) via Kepler's 3rd law: GM = n² a³
 fn gr_pericentre_precession_rate(planet: &Planet) -> f64 {
-    use crate::constants::SPEED_OF_LIGHT;
     3.0 * planet.mean_motion.powi(3) * planet.semi_major_axis.powi(2)
         / (SPEED_OF_LIGHT.powi(2) * (1.0 - planet.eccentricity.powi(2)))
 }

@@ -508,10 +508,26 @@ impl Star {
         // (observed: ~17% torque jump at Ro = 0.09 leads to 13M+ rejected steps at the same timestamp).
         // blend → 0 (saturated) when Ro << Ro_sat, → 1 (unsaturated) when Ro >> Ro_sat.
         // blend_width = 0.1 means the transition spans ±10% of Ro_sat; physically negligible.
+
+        // let blend_width = 0.1_f64;
+        // let x = (self.rossby - ROSSBY_SATURATION) / (ROSSBY_SATURATION * blend_width);
+        // let blend = 0.5 * (1.0 + x.tanh());
+        // blend * unsaturated + (1.0 - blend) * saturated
+
         let blend_width = 0.1_f64;
         let x = (self.rossby - ROSSBY_SATURATION) / (ROSSBY_SATURATION * blend_width);
+        // tanh asymptotes: at |x| > 5 the residual blend fraction (~1e-9)
+        // multiplied by extreme unsaturated values (~1e180) still overflows.
+        // Hard-clamp to the pure branch outside the transition window.
+        if x <= -5.0 {
+            return saturated;
+        }
+        if x >= 5.0 {
+            return unsaturated;
+        }
         let blend = 0.5 * (1.0 + x.tanh());
         blend * unsaturated + (1.0 - blend) * saturated
+        
     }
 
     // Stellar wind torque during the evolved phases of the star.

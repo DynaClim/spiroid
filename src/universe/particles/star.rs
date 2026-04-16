@@ -54,7 +54,7 @@ pub struct Star {
     // Evolution model of the star (if enabled).
     evolution: Evolution,
     // Evolving parameters
-    age: f64,                       // (s)
+    pub(crate) age: f64,            // (s)
     pub(crate) radius: f64,         // (m)
     convective_radius: f64,         // (m)
     pub(crate) radiative_mass: f64, // (kg)
@@ -485,24 +485,33 @@ impl Star {
     // Matt et al. 2015, Eq. 3
     fn wind_torque(&self) -> f64 {
         // Torque applied on the envelope by the wind
-        // Solar wind torque, in Joule (Matt et al. 2015)
+        // Solar wind torque, in Joule (Matt et al. 2015, Eq. 6 & 7)
         // There is a debate in the community about the value of solar_wind_torque_sun.
         // The best estimate so far is from Finley et al. (2018), giving 2.9e30 erg = 2.9e23 J
         // Most scaling laws were adjusted with this constant as 8e23 to recover the Sun.
         // A clean study should be made again before changing this.
 
+        // There is a chance the current gamma is only for solar mass star
+        // check 8e23 what is it
         // Matt et al. 2015, Eq. 8
         let gamma = 8e23 * (self.radius / SOLAR_RADIUS).powf(3.1) * sqrt!(self.mass / SOLAR_MASS);
         // Wind braking torque in Joules, following (Matt et al. 2015)
-        if self.rossby > ROSSBY_SATURATION {
-            // Matt et al. 2015, Eq. 6
-            -gamma
-                * (self.convective_turnover_time / self.convective_turnover_time_sun).powi(2)
-                * (self.spin / SOLAR_ANGULAR_VELOCITY).powi(3)
-        } else {
-            // Matt et al. 2015, Eq. 7
-            -gamma * (ROSSBY_SUN / ROSSBY_SATURATION).powi(2) * (self.spin / SOLAR_ANGULAR_VELOCITY)
-        }
+        // Matt et al. 2015, Eq. 6 (unsaturated regime, Ro > Ro_sat)
+        let unsaturated = -gamma
+            * (self.convective_turnover_time / self.convective_turnover_time_sun).powi(2)
+            * (self.spin / SOLAR_ANGULAR_VELOCITY).powi(3);
+        // Matt et al. 2015, Eq. 7 (saturated regime, Ro <= Ro_sat)
+        let saturated =
+            -gamma * (ROSSBY_SUN / ROSSBY_SATURATION).powi(2) * (self.spin / SOLAR_ANGULAR_VELOCITY);
+        // Smooth tanh blend between regimes to avoid a discontinuous torque jump at ROSSBY_SATURATION.
+        // The hard if/else causes the integrator to straddle the boundary and loop indefinitely
+        // (observed: ~17% torque jump at Ro = 0.09 leads to 13M+ rejected steps at the same timestamp).
+        // blend → 0 (saturated) when Ro << Ro_sat, → 1 (unsaturated) when Ro >> Ro_sat.
+        // blend_width = 0.1 means the transition spans ±10% of Ro_sat; physically negligible.
+        let blend_width = 0.1_f64;
+        let x = (self.rossby - ROSSBY_SATURATION) / (ROSSBY_SATURATION * blend_width);
+        let blend = 0.5 * (1.0 + x.tanh());
+        blend * unsaturated + (1.0 - blend) * saturated
     }
 
     // Stellar wind torque during the evolved phases of the star.

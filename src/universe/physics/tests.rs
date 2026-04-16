@@ -1,6 +1,6 @@
 use super::*;
 use crate::Universe;
-use crate::universe::effects::general_relativity::GRModel;
+use crate::universe::effects::general_relativity::GeneralRelativityModel;
 use crate::universe::effects::magnetism::{IsothermalWind, MagneticModel};
 use crate::universe::effects::tides::ConstantTimeLag;
 use crate::universe::effects::tides::TidalModel;
@@ -35,14 +35,14 @@ fn _derivatives_magnetic() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Wind(wind),
             wind: WindModel::Enabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -83,7 +83,7 @@ fn _derivatives_tides() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
@@ -93,7 +93,7 @@ fn _derivatives_tides() {
             }),
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Enabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -138,7 +138,7 @@ fn _derivatives_magnetic_tides() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
@@ -148,7 +148,7 @@ fn _derivatives_magnetic_tides() {
             }),
             magnetism: MagneticModel::Wind(wind),
             wind: WindModel::Enabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -194,14 +194,14 @@ fn _derivatives_kaula() {
             tides: TidalModel::KaulaTides(test_kaula()),
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Enabled,
-            general_relativity: GRModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -401,7 +401,7 @@ fn _planet_spin_axis_inclination_derivative() {
 //             tides: TidalModel::Disabled,
 //             magnetism: MagneticModel::Disabled,
 //             wind: WindModel::Enabled,
-//             general_relativity: GRModel::Enabled,
+//             general_relativity: GeneralRelativityModel::Enabled,
 //         },
 //         perturbing_body: None,
 //         time: TEST_TIME,
@@ -455,7 +455,7 @@ fn _planet_spin_axis_inclination_derivative() {
 //             tides: TidalModel::Disabled,
 //             magnetism: MagneticModel::Disabled,
 //             wind: WindModel::Enabled,
-//             general_relativity: GRModel::Enabled,
+//             general_relativity: GeneralRelativityModel::Enabled,
 //         },
 //         perturbing_body: None,
 //         time: TEST_TIME,

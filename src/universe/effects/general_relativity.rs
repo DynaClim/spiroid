@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
-pub enum GRModel {
+pub enum GeneralRelativityModel {
     #[default]
     Disabled,
     Enabled,
 }
 
-impl GRModel {
+impl GeneralRelativityModel {
     pub(crate) fn is_enabled(&self) -> bool {
         matches!(self, Self::Enabled)
     }

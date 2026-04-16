@@ -1,6 +1,6 @@
 use crate::constants::MAGNETIC_PERMEABILITY_OF_VACUUM;
 use crate::universe::effects::tides::TidalModel;
-use crate::universe::effects::{GRModel, MagneticModel, WindModel};
+use crate::universe::effects::{GeneralRelativityModel, MagneticModel, WindModel};
 pub(crate) mod planet;
 pub(crate) mod star;
 
@@ -26,7 +26,7 @@ pub struct Particle {
     #[serde(default)]
     pub(crate) wind: WindModel,
     #[serde(default)]
-    pub(crate) general_relativity: GRModel,
+    pub(crate) general_relativity: GeneralRelativityModel,
 }
 
 impl Particle {

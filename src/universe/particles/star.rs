@@ -54,7 +54,7 @@ pub struct Star {
     // Evolution model of the star (if enabled).
     evolution: Evolution,
     // Evolving parameters
-    pub(crate) age: f64,            // (s)
+    age: f64,                       // (s)
     pub(crate) radius: f64,         // (m)
     convective_radius: f64,         // (m)
     pub(crate) radiative_mass: f64, // (kg)

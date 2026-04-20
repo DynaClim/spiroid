@@ -9,7 +9,7 @@ use crate::universe::effects::tides::constant_time_lag::Inertial;
 use crate::universe::effects::tides::kaula::tests::test_kaula;
 use crate::universe::effects::wind::WindModel;
 use crate::universe::particles::planet::tests::{
-    test_planet, test_planet_kaula, test_planet_magnetic,
+    test_planet, test_planet_kaula, test_planet_magnetic, test_planet_mercury,
 };
 use crate::universe::particles::star::tests::{test_star, test_star_evolving};
 use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_DISK_LIFETIME, TEST_TIME};
@@ -174,6 +174,8 @@ fn _derivatives_magnetic_tides() {
     assert_eq!(expected, result);
 }
 
+// Note: Tests are currently tailored for amd64 and may fail (with slight numerical discrepancies) 
+// on other platforms due to differences in cpu architecture.
 #[test]
 fn _derivatives_kaula() {
     let star = test_star();
@@ -368,120 +370,11 @@ fn _planet_spin_axis_inclination_derivative() {
     assert_eq!(expected, result);
 }
 
-// // Unit test for the GR precession rate function.
-// // dω/dt = 3 n³ a² / (c² (1 - e²))
-// #[test]
-// fn _gr_pericentre_precession_rate() {
-//     let planet = test_planet_kaula();
-//     let result = gr_pericentre_precession_rate(&planet);
-//     let expected = todo!(); // fill in: 3 * n^3 * a^2 / (c^2 * (1 - e^2))
-//     assert_eq!(expected, result);
-// }
-
-// // Integration test: GR enabled, Kaula disabled.
-// // Only pericentre_omega should be nonzero among orbital element derivatives.
-// #[test]
-// fn _derivatives_gr_only() {
-//     let star = test_star();
-//     let planet = test_planet_kaula();
-//
-//     let mut y = UniverseIntegral::default();
-//     y.orbiting_body.semi_major_axis = planet.semi_major_axis.powf(6.5);
-//     y.orbiting_body.pericentre_omega = planet.pericentre_omega;
-//
-//     let mut universe = Universe {
-//         orbiting_body: Particle {
-//             kind: ParticleType::Planet(planet),
-//             tides: TidalModel::Disabled,
-//             magnetism: MagneticModel::Disabled,
-//             wind: WindModel::Disabled,
-//         },
-//         central_body: Particle {
-//             kind: ParticleType::Star(star),
-//             tides: TidalModel::Disabled,
-//             magnetism: MagneticModel::Disabled,
-//             wind: WindModel::Enabled,
-//             general_relativity: GeneralRelativityModel::Enabled,
-//         },
-//         perturbing_body: None,
-//         time: TEST_TIME,
-//         disk_lifetime: TEST_DISK_LIFETIME,
-//         disk_is_dissipated: DISK_IS_DISSIPATED,
-//         derivatives: UniverseIntegral::default(),
-//     };
-//
-//     universe.update(TEST_TIME, &y).unwrap();
-//     let mut result = UniverseIntegral::default();
-//     let _ = force(
-//         &universe.central_body,
-//         &universe.orbiting_body,
-//         universe.disk_is_dissipated,
-//         &mut result,
-//     )
-//     .unwrap();
-//
-//     let mut expected = UniverseIntegral::default();
-//     expected.orbiting_body.pericentre_omega = todo!(); // fill in GR precession rate
-//     // All other orbital element derivatives should be zero:
-//     // spin, eccentricity, inclination, longitude_ascending_node, spin_inclination = 0
-//     assert_eq!(expected, result);
-// }
-
-// // Integration test: both Kaula and GR enabled.
-// // pericentre_omega derivative should be the sum of Kaula and GR contributions.
-// #[test]
-// fn _derivatives_kaula_and_gr() {
-//     let star = test_star();
-//     let planet = test_planet_kaula();
-//
-//     let mut y = UniverseIntegral::default();
-//     y.orbiting_body.semi_major_axis = planet.semi_major_axis.powf(6.5);
-//     y.orbiting_body.spin = 8.062093352143078e-7;
-//     y.orbiting_body.eccentricity = 2.500000000179822e-5;
-//     y.orbiting_body.inclination = 0.34999207817863753;
-//     y.orbiting_body.longitude_ascending_node = 1.0465602799892118;
-//     y.orbiting_body.pericentre_omega = -0.11536773671287792;
-//     y.orbiting_body.spin_inclination = 0.31581363067032314;
-//
-//     let mut universe = Universe {
-//         orbiting_body: Particle {
-//             kind: ParticleType::Planet(planet),
-//             tides: TidalModel::KaulaTides(test_kaula()),
-//             magnetism: MagneticModel::Disabled,
-//             wind: WindModel::Disabled,
-//         },
-//         central_body: Particle {
-//             kind: ParticleType::Star(star),
-//             tides: TidalModel::Disabled,
-//             magnetism: MagneticModel::Disabled,
-//             wind: WindModel::Enabled,
-//             general_relativity: GeneralRelativityModel::Enabled,
-//         },
-//         perturbing_body: None,
-//         time: TEST_TIME,
-//         disk_lifetime: TEST_DISK_LIFETIME,
-//         disk_is_dissipated: DISK_IS_DISSIPATED,
-//         derivatives: UniverseIntegral::default(),
-//     };
-//
-//     universe.update(TEST_TIME, &y).unwrap();
-//     let mut result = UniverseIntegral::default();
-//     let _ = force(
-//         &universe.central_body,
-//         &universe.orbiting_body,
-//         universe.disk_is_dissipated,
-//         &mut result,
-//     )
-//     .unwrap();
-//
-//     let mut expected = UniverseIntegral::default();
-//     // Same as _derivatives_kaula except pericentre_omega += GR contribution:
-//     expected.orbiting_body.semi_major_axis = 3.0436830855775857e49;
-//     expected.orbiting_body.spin = -1.5432986377090881e-9;
-//     expected.orbiting_body.eccentricity = 5.129250165061513e-16;
-//     expected.orbiting_body.inclination = 0.0007011714730044864;
-//     expected.orbiting_body.longitude_ascending_node = -0.0018601514572935667;
-//     expected.orbiting_body.pericentre_omega = todo!(); // fill in: kaula value (5.876804234917257e-6) + GR value
-//     expected.orbiting_body.spin_inclination = 0.0003527171243323208;
-//     assert_eq!(expected, result);
-// }
+// Unit test for the GR precession rate function.
+#[test]
+fn _gr_pericentre_precession_rate() {
+    let planet = test_planet_mercury();
+    let result = gr_pericentre_precession_rate(&planet);
+    let expected = 4.725582990934671e-14;
+    assert_eq!(expected, result);
+}

@@ -40,12 +40,10 @@ except ImportError:
 import matplotlib
 
 matplotlib.use("Agg")
-matplotlib.rcParams["agg.path.chunksize"] = 10000
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
 from flatten_json import flatten
-import math
 
 from units import (
     sanitise_key,
@@ -53,8 +51,6 @@ from units import (
     convert_units,
     get_units_label,
     filter_keys,
-    add_derived_quantities,
-    PLOT_STYLES,
 )
 
 
@@ -142,13 +138,7 @@ def create_plot(title, x_label, y_label, subplots, logscale=False):
     # Plot all subplots, assigning each subplot a distinct color.
     for data in subplots:
         (name, x, y) = data
-        if name == "planet_pericentre_omega":
-            y = [math.sin(v) for v in y]
-        style = PLOT_STYLES.get(name, {})
-        plt.plot(x, y, label=name, color=style.get("color", colors.pop()),
-                 linestyle=style.get("linestyle", "-"),
-                 marker=style.get("marker", ""),
-                 alpha=0.5)
+        plt.plot(x, y, "", label=name, color=colors.pop(), alpha=0.5)
 
     # Convert to logscale if required.
     if logscale:
@@ -166,14 +156,8 @@ def save_plot(title, output_path):
     """Saves the plot to png."""
     # Save the figure as a file.
     try:
-        # plt.savefig(
-        #     f"{output_path}/{title.lower().replace(' ', '_').replace('\n', ':')}.png",
-        #     dpi=500,
-        #     bbox_inches="tight",
-        # )
-        safe_title = title.lower().replace(' ', '_').replace('\n', ':')
         plt.savefig(
-            f"{output_path}/{safe_title}.png",
+            f"{output_path}/{title.lower().replace(' ', '_').replace('\n', ':')}.png",
             dpi=500,
             bbox_inches="tight",
         )
@@ -236,7 +220,7 @@ def main():
     #   filename2: {var1: [values], var2: [values], ...},
     #   ...
     # }
-    all_data = {file: add_derived_quantities(parse_values(file)) for file in all_files}
+    all_data = {file: parse_values(file) for file in all_files}
     x_label = "time"
     if output_path:
         # Create plots for each quantitiy, containing data from all data files.
@@ -262,8 +246,8 @@ def main():
             all_keys = filter_keys(all_keys)
             # Create a merged plot for all grouped quantities for each data file.
             for y_label, key_set in partition_keys(all_keys).items():
-                # if len(key_set) == 1:
-                #     continue
+                if len(key_set) == 1:
+                    continue
                 print(f"Making graph: {y_label}")
                 subplots = create_subplots(x_label, key_set, data)
                 create_plots(x_label, y_label, subplots, output_path)

@@ -9,6 +9,9 @@ GRAVITATIONAL_EARTH_MASS = 3.986_004_415e14
 EARTH_MASS = GRAVITATIONAL_EARTH_MASS / GRAVITATIONAL
 EARTH_RADIUS = 6.378_136_6e6
 JUPITER_RADIUS = 7.1492e7
+MERCURY_MASS = 3.3011e23
+MERCURY_RADIUS = 2.4397e6
+
 # Plots will _not_ be made for these quantities.
 # Uncomment a quantity to prevent it being used in plots.
 IGNORED_KEYS = [

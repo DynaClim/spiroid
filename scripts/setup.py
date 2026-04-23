@@ -23,15 +23,17 @@ import sys
 
 sys.dont_write_bytecode = True
 from spiroid.configmaker import make_configs
+
+# from spiroid.particles import mercury, jupiter
 from units import (
     AU,
     SECONDS_IN_YEAR,
     SOLAR_MASS,
     SOLAR_RADIUS,
-    JUPITER_MASS,
-    JUPITER_RADIUS,
-    EARTH_MASS,
-    EARTH_RADIUS,
+    # JUPITER_MASS,
+    # JUPITER_RADIUS,
+    # EARTH_MASS,
+    # EARTH_RADIUS,
 )
 
 

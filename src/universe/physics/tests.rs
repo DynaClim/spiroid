@@ -373,7 +373,7 @@ fn _planet_spin_axis_inclination_derivative() {
 #[test]
 fn _general_relativity_pericentre_precession_rate() {
     let planet = test_planet_mercury();
-    let result = gr_pericentre_precession_rate(&planet);
+    let result = general_relativity_pericentre_precession_rate(&planet);
     let expected = 4.725582990934671e-14;
     assert_eq!(expected, result);
 }

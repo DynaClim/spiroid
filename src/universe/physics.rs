@@ -53,7 +53,7 @@ pub(crate) fn force(
     }
 
     // General Relativity 1PN apsidal precession.
-    if central_body.general_relativity.is_enabled() {
+    if orbiting_body.general_relativity.is_enabled() {
         dy.orbiting_body.pericentre_omega += general_relativity_pericentre_precession_rate(planet);
     }
 

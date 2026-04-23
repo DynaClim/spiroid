@@ -174,7 +174,7 @@ fn _derivatives_magnetic_tides() {
     assert_eq!(expected, result);
 }
 
-// Note: Tests are currently tailored for amd64 and may fail (with slight numerical discrepancies) 
+// Note: Tests are currently tailored for amd64 and may fail (with slight numerical discrepancies)
 // on other platforms due to differences in cpu architecture.
 #[test]
 fn _derivatives_kaula() {
@@ -370,9 +370,8 @@ fn _planet_spin_axis_inclination_derivative() {
     assert_eq!(expected, result);
 }
 
-// Unit test for the GR precession rate function.
 #[test]
-fn _gr_pericentre_precession_rate() {
+fn _general_relativity_pericentre_precession_rate() {
     let planet = test_planet_mercury();
     let result = gr_pericentre_precession_rate(&planet);
     let expected = 4.725582990934671e-14;

@@ -41,7 +41,7 @@ pub fn test_planet_mercury() -> Planet {
     planet.radius = 2.4397e6;
 
     let semi_major_axis = 5.790904e10;
-    // 58.65 days 
+    // 58.65 days
     let spin = 1.2399326882596827e-6;
     let eccentricity = 0.20563;
     // assume to be coplanar and zeros for others
@@ -88,8 +88,6 @@ pub fn test_planet_kaula() -> Planet {
     );
     planet
 }
-
-
 
 // Tests below
 #[test]

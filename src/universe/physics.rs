@@ -54,7 +54,7 @@ pub(crate) fn force(
 
     // General Relativity 1PN apsidal precession.
     if central_body.general_relativity.is_enabled() {
-        dy.orbiting_body.pericentre_omega += gr_pericentre_precession_rate(planet);
+        dy.orbiting_body.pericentre_omega += general_relativity_pericentre_precession_rate(planet);
     }
 
     // Check the derivatives for numerical errors.
@@ -197,7 +197,7 @@ fn planet_argument_pericentre_derivative(planet: &Planet, star: &Star, kaula: &K
 }
 
 // Spin axis inclination derivative.
-// Boue & Efroimksy (2019) Eq 122 and Revol et al. (2023) Eq A.13
+// Boue & Efroimksy (2019) Eq. 122 and Revol et al. (2023) Eq. A.13
 // The spin axis inclination refers to the inclination of the planet's rotational vector
 // with respect to the total angular momentum.
 fn planet_spin_axis_inclination_derivative(planet: &Planet, star: &Star, kaula: &Kaula) -> f64 {
@@ -214,10 +214,11 @@ fn planet_spin_axis_inclination_derivative(planet: &Planet, star: &Star, kaula: 
 mod tests;
 
 // General Relativity 1PN apsidal precession rate.
-// Einstein (1915); Weinberg (1972), Eq. 9.2.5
+// Einstein (1915)
+// Weinberg (1972) Eq. 9.2.5
 // dω/dt = 3 n³ a² / (c² (1 - e²))
 // Derived from dω/dt = 3 G M n / (c² a (1 - e²)) via Kepler's 3rd law: GM = n² a³
-fn gr_pericentre_precession_rate(planet: &Planet) -> f64 {
+fn general_relativity_pericentre_precession_rate(planet: &Planet) -> f64 {
     3.0 * planet.mean_motion.powi(3) * planet.semi_major_axis.powi(2)
         / (SPEED_OF_LIGHT.powi(2) * (1.0 - planet.eccentricity.powi(2)))
 }

@@ -361,7 +361,7 @@ impl Universe {
             self.orbiting_body
                 .tides
                 .refresh_kaula(self.time, star, planet)?;
-        } else if self.orbiting_body.general_relativity.is_enabled() {
+        } else if self.central_body.general_relativity.is_enabled() {
             // General relativity only evolves pericentre_omega
             // If general relativity and kaula tides on the planet are both enabled,
             // pericentre_omega is updated in `planet.refresh_orbital_elements` for kaula

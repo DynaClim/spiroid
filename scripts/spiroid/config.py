@@ -65,9 +65,7 @@ def make_planets(planet_base, effects):
                 "KaulaTides": {"particle_type": {particle_type: {"solid_file": kaula_solid_file}}}
             }
 
-        # TODO make general relativity compatible with kaula tides.
-        # need to make the indexing consistent. i.e. planet_vals[4] should be spin
-        if effects.get("GR_ENABLED"):
+        if effects.get("GENERAL_RELATIVITY_ENABLED"):
             eccentricity = planet_vals[4]
             pericentre_omega = planet_vals[5]
             planet.update({"eccentricity": eccentricity, "pericentre_omega": pericentre_omega})
@@ -123,7 +121,7 @@ def make_stars(star_base, effects):
         if not effects["WIND_ENABLED"]:
             body["wind"] = "Disabled"
 
-        if effects.get("GR_ENABLED"):
+        if effects.get("GENERAL_RELATIVITY_ENABLED"):
             body["general_relativity"] = "Enabled"
 
         body["kind"] = {"Star": star}
@@ -157,7 +155,7 @@ def generate_all_effect_combinations(input_dict):
         "STAR_TIDES_ENABLED": "star_ctl_tides",
         "PLANET_TIDES_ENABLED": "planet_kaula_tides",
         "WIND_ENABLED": "wind",
-        "GR_ENABLED": "gr",
+        "GENERAL_RELATIVITY_ENABLED": "general_relativity",
     }
     # Get keys and values from the input dictionary
     keys = input_dict.keys()

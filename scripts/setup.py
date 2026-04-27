@@ -71,6 +71,7 @@ def effect_setup():
         "PLANET_TIDES_ENABLED": [False],
         # Disable wind for testing conservation of angular momentum
         "WIND_ENABLED": [True],
+        "GENERAL_RELATIVITY_ENABLED": [False],
     }
 
     return effects
@@ -94,20 +95,22 @@ def planet_setup(effects):
         # Gauss
         planet_base["magnetic_field"] = [10.0]
 
+    #  Note that the order of initiation of Keplerian elements should not be altered.
     if effects["PLANET_TIDES_ENABLED"]:
         # For Kaula
         planet_base.update(
             {
-                # rad.s
-                "spin": [8.093879511357418e-07],
                 # No units
                 "eccentricity": [0.005],
+                # rad
+                "pericentre_omega": [0.0],
+                # rad.s
+                "spin": [8.093879511357418e-07],
                 # rad
                 "inclination": [0.3490658503988659],
                 # rad
                 "longitude_ascending_node": [1.0],
-                # rad
-                "pericentre_omega": [0.0],
+
                 # rad
                 "spin_inclination": [0.34906584951436426],
                 # No units
@@ -118,6 +121,17 @@ def planet_setup(effects):
                         "examples/data/planet/tides/kaula/leconte2015_steinberger.csv",
                     )
                 ],
+            }
+        )
+
+
+    if effects.get("GENERAL_RELATIVITY_ENABLED"):
+        planet_base.update(
+            {
+                # No units
+                "eccentricity": [0.20563],
+                # rad (initial value)
+                "pericentre_omega": [0.0],
             }
         )
 

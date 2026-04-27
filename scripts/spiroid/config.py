@@ -40,11 +40,11 @@ def make_planets(planet_base, effects):
 
         if effects["PLANET_TIDES_ENABLED"]:
             (
-                spin,
                 eccentricity,
+                pericentre_omega,
+                spin,
                 inclination,
                 longitude_ascending_node,
-                pericentre_omega,
                 spin_inclination,
                 radius_of_gyration,
                 (particle_type, kaula_solid_file),

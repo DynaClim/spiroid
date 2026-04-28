@@ -169,6 +169,17 @@ Additional fields, only required by MESA data files:
 A script is included to help clean and convert raw MESA output files to CSV:
 `uv run scripts/convert_mesa_to_csv.py`
 
+> Note: the order of initiation of Keplerian elements should not be altered, no matter what physical effects are enabled.
+
+### General Relativity
+General relativity (initiated by the star) can be toggled into the following states:
+
+- Disabled
+- Enabled
+
+#### Enabled
+Set the initial `eccentricity` and `pericentre_omega`(longitude of pericenter) for `Planet`.
+
 ### Magnetism (`Particle`)
 Magnetic interaction (initiated by the star) can be toggled into the following states:
 
@@ -262,6 +273,7 @@ src
 ├── physics.rs
 ├── universe
 │   ├── effects
+│   │   ├── general_relativity.rs
 │   │   ├── magnetism.rs
 │   │   ├── tides
 │   │   │   ├── constant_time_lag
@@ -288,6 +300,7 @@ src
 - physics.rs: `derive` function called at every iteration by the integrator (`system.derive()`) to compute the derivatives for the integration quantities.
 - universe.rs: Public interface for the system containing particles.
 - universe/effects.rs: Public interface for effects (`Tides` and `Magnetism`).
+- universe/effects/magnetism.rs: General relativity SPI (physics).
 - universe/effects/magnetism.rs: Magnetic SPI (physics).
 - universe/effects/tides.rs: Tidal SPI (physics).
 - universe/particles.rs: Public interface for particles (`Star` and `Planet`) and generic `Particle` types.

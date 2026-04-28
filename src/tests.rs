@@ -223,3 +223,10 @@ fn example_zahn() {
     let result = test_simulation(&config);
     compare_or_create(&expected, &result);
 }
+
+#[test]
+fn example_mercury_general_relativity_precession() {
+    let (config, expected) = make_testcase_paths("mercury_general_relativity_precession");
+    let result = test_simulation(&config);
+    compare_or_create(&expected, &result);
+}

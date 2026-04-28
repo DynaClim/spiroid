@@ -35,6 +35,35 @@ pub fn test_planet() -> Planet {
 }
 
 #[cfg(test)]
+pub fn test_planet_mercury() -> Planet {
+    let mut planet = Planet::new();
+    planet.mass = 3.3011e23;
+    planet.radius = 2.4397e6;
+
+    let semi_major_axis = 5.790904e10;
+    // 58.65 days
+    let spin = 1.2399326882596827e-6;
+    let eccentricity = 0.20563;
+    // assume to be coplanar and zeros for others
+    let inclination = 0.0;
+    let longitude_ascending_node = 0.0;
+    let pericentre_omega = 0.0;
+    let spin_inclination = 0.0;
+
+    let star = test_star();
+    planet.refresh(semi_major_axis, &star);
+    planet.refresh_orbital_elements(
+        spin,
+        eccentricity,
+        inclination,
+        longitude_ascending_node,
+        pericentre_omega,
+        spin_inclination,
+    );
+    planet
+}
+
+#[cfg(test)]
 pub fn test_planet_kaula() -> Planet {
     let mut planet = test_planet_base();
     planet.radius_of_gyration_2 = 0.33;

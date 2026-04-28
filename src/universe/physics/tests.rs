@@ -1,5 +1,6 @@
 use super::*;
 use crate::Universe;
+use crate::universe::effects::general_relativity::GeneralRelativityModel;
 use crate::universe::effects::magnetism::{IsothermalWind, MagneticModel};
 use crate::universe::effects::tides::ConstantTimeLag;
 use crate::universe::effects::tides::TidalModel;
@@ -8,7 +9,7 @@ use crate::universe::effects::tides::constant_time_lag::Inertial;
 use crate::universe::effects::tides::kaula::tests::test_kaula;
 use crate::universe::effects::wind::WindModel;
 use crate::universe::particles::planet::tests::{
-    test_planet, test_planet_kaula, test_planet_magnetic,
+    test_planet, test_planet_kaula, test_planet_magnetic, test_planet_mercury,
 };
 use crate::universe::particles::star::tests::{test_star, test_star_evolving};
 use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_DISK_LIFETIME, TEST_TIME};
@@ -34,12 +35,14 @@ fn _derivatives_magnetic() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Wind(wind),
             wind: WindModel::Enabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -80,6 +83,7 @@ fn _derivatives_tides() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
@@ -89,6 +93,7 @@ fn _derivatives_tides() {
             }),
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Enabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -133,6 +138,7 @@ fn _derivatives_magnetic_tides() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
@@ -142,6 +148,7 @@ fn _derivatives_magnetic_tides() {
             }),
             magnetism: MagneticModel::Wind(wind),
             wind: WindModel::Enabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -167,6 +174,8 @@ fn _derivatives_magnetic_tides() {
     assert_eq!(expected, result);
 }
 
+// Note: Tests are currently tailored for amd64 and may fail (with slight numerical discrepancies)
+// on other platforms due to differences in cpu architecture.
 #[test]
 fn _derivatives_kaula() {
     let star = test_star();
@@ -187,12 +196,14 @@ fn _derivatives_kaula() {
             tides: TidalModel::KaulaTides(test_kaula()),
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Disabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
             wind: WindModel::Enabled,
+            general_relativity: GeneralRelativityModel::Disabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -356,5 +367,13 @@ fn _planet_spin_axis_inclination_derivative() {
     let kaula = test_kaula();
     let result = planet_spin_axis_inclination_derivative(&planet, &star, &kaula);
     let expected = -0.1641163464603492;
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _general_relativity_pericentre_precession_rate() {
+    let planet = test_planet_mercury();
+    let result = general_relativity_pericentre_precession_rate(&planet);
+    let expected = 4.725582990934671e-14;
     assert_eq!(expected, result);
 }

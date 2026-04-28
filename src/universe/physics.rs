@@ -1,4 +1,4 @@
-use crate::constants::GRAVITATIONAL;
+use crate::constants::{GRAVITATIONAL, SPEED_OF_LIGHT};
 use crate::universe::effects::tides::TidalModel;
 use crate::universe::{Kaula, Particle, ParticleType, Planet, Star, UniverseIntegral};
 use anyhow::{Result, bail};
@@ -50,6 +50,11 @@ pub(crate) fn force(
             planet_argument_pericentre_derivative(planet, star, kaula);
         dy.orbiting_body.spin_inclination =
             planet_spin_axis_inclination_derivative(planet, star, kaula);
+    }
+
+    // General Relativity 1PN apsidal precession.
+    if central_body.general_relativity.is_enabled() {
+        dy.orbiting_body.pericentre_omega += general_relativity_pericentre_precession_rate(planet);
     }
 
     // Check the derivatives for numerical errors.
@@ -192,7 +197,7 @@ fn planet_argument_pericentre_derivative(planet: &Planet, star: &Star, kaula: &K
 }
 
 // Spin axis inclination derivative.
-// Boue & Efroimksy (2019) Eq 122 and Revol et al. (2023) Eq A.13
+// Boue & Efroimksy (2019) Eq. 122 and Revol et al. (2023) Eq. A.13
 // The spin axis inclination refers to the inclination of the planet's rotational vector
 // with respect to the total angular momentum.
 fn planet_spin_axis_inclination_derivative(planet: &Planet, star: &Star, kaula: &Kaula) -> f64 {
@@ -208,8 +213,20 @@ fn planet_spin_axis_inclination_derivative(planet: &Planet, star: &Star, kaula: 
 #[cfg(test)]
 mod tests;
 
+// General Relativity 1PN apsidal precession rate.
+// Einstein (1915)
+// Weinberg (1972) Eq. 9.2.5
+// dω/dt = 3 n³ a² / (c² (1 - e²))
+// Derived from dω/dt = 3 G M n / (c² a (1 - e²)) via Kepler's 3rd law: GM = n² a³
+fn general_relativity_pericentre_precession_rate(planet: &Planet) -> f64 {
+    3.0 * planet.mean_motion.powi(3) * planet.semi_major_axis.powi(2)
+        / (SPEED_OF_LIGHT.powi(2) * (1.0 - planet.eccentricity.powi(2)))
+}
+
 // References:
 // Ahuir et al. 2021, https://doi.org/10.1051/0004-6361/202040173
 // Benbakoura et al. 2019, https://doi.org/10.1051/0004-6361/201833314
 // Boué and Efroimsky 2019, https://doi.org/10.1007/s10569-019-9908-2
+// Einstein 1915, https://doi.org/10.1002/3527608958.ch7
 // Revol et al. 2023, https://doi.org/10.1051/0004-6361/202245790
+// Weinberg 1972, Gravitation and Cosmology, Eq. 9.2.5

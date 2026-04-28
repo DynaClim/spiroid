@@ -38,24 +38,25 @@ def make_planets(planet_base, effects):
         if effects["MAGNETIC_EFFECT_ENABLED"]:
             planet["magnetic_field"] = magnetic_field
 
+        if effects["PLANET_TIDES_ENABLED"] or effects["GENERAL_RELATIVITY_ENABLED"]:
+            eccentricity = planet_vals[4]
+            pericentre_omega = planet_vals[5]
+            planet.update({"eccentricity": eccentricity, "pericentre_omega": pericentre_omega})
+
         if effects["PLANET_TIDES_ENABLED"]:
             (
                 spin,
-                eccentricity,
                 inclination,
                 longitude_ascending_node,
-                pericentre_omega,
                 spin_inclination,
                 radius_of_gyration,
                 (particle_type, kaula_solid_file),
-            ) = planet_vals[4:]
+            ) = planet_vals[6:]
             planet.update(
                 {
                     "inclination": inclination,
-                    "eccentricity": eccentricity,
                     "spin": spin,
                     "longitude_ascending_node": longitude_ascending_node,
-                    "pericentre_omega": pericentre_omega,
                     "spin_inclination": spin_inclination,
                     "radius_of_gyration_2": radius_of_gyration,
                 }
@@ -70,6 +71,7 @@ def make_planets(planet_base, effects):
 
         body["kind"] = {"Planet": planet}
         planets.append(body)
+
     return planets
 
 
@@ -116,6 +118,9 @@ def make_stars(star_base, effects):
         if not effects["WIND_ENABLED"]:
             body["wind"] = "Disabled"
 
+        if effects.get("GENERAL_RELATIVITY_ENABLED"):
+            body["general_relativity"] = "Enabled"
+
         body["kind"] = {"Star": star}
         stars.append(body)
 
@@ -147,6 +152,7 @@ def generate_all_effect_combinations(input_dict):
         "STAR_TIDES_ENABLED": "star_ctl_tides",
         "PLANET_TIDES_ENABLED": "planet_kaula_tides",
         "WIND_ENABLED": "wind",
+        "GENERAL_RELATIVITY_ENABLED": "general_relativity",
     }
     # Get keys and values from the input dictionary
     keys = input_dict.keys()

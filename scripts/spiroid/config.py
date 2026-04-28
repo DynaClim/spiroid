@@ -38,24 +38,25 @@ def make_planets(planet_base, effects):
         if effects["MAGNETIC_EFFECT_ENABLED"]:
             planet["magnetic_field"] = magnetic_field
 
+        if effects["PLANET_TIDES_ENABLED"] or effects["GENERAL_RELATIVITY_ENABLED"]:
+            eccentricity = planet_vals[4]
+            pericentre_omega = planet_vals[5]
+            planet.update({"eccentricity": eccentricity, "pericentre_omega": pericentre_omega})
+
         if effects["PLANET_TIDES_ENABLED"]:
             (
-                eccentricity,
-                pericentre_omega,
                 spin,
                 inclination,
                 longitude_ascending_node,
                 spin_inclination,
                 radius_of_gyration,
                 (particle_type, kaula_solid_file),
-            ) = planet_vals[4:]
+            ) = planet_vals[6:]
             planet.update(
                 {
                     "inclination": inclination,
-                    "eccentricity": eccentricity,
                     "spin": spin,
                     "longitude_ascending_node": longitude_ascending_node,
-                    "pericentre_omega": pericentre_omega,
                     "spin_inclination": spin_inclination,
                     "radius_of_gyration_2": radius_of_gyration,
                 }
@@ -65,16 +66,12 @@ def make_planets(planet_base, effects):
                 "KaulaTides": {"particle_type": {particle_type: {"solid_file": kaula_solid_file}}}
             }
 
-        if effects.get("GENERAL_RELATIVITY_ENABLED"):
-            eccentricity = planet_vals[4]
-            pericentre_omega = planet_vals[5]
-            planet.update({"eccentricity": eccentricity, "pericentre_omega": pericentre_omega})
-
         if not effects["WIND_ENABLED"]:
             body["wind"] = "Disabled"
 
         body["kind"] = {"Planet": planet}
         planets.append(body)
+
     return planets
 
 

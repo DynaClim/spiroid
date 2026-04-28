@@ -501,8 +501,9 @@ impl Star {
             * (self.convective_turnover_time / self.convective_turnover_time_sun).powi(2)
             * (self.spin / SOLAR_ANGULAR_VELOCITY).powi(3);
         // Matt et al. 2015, Eq. 7 (saturated regime, Ro <= Ro_sat)
-        let saturated =
-            -gamma * (ROSSBY_SUN / ROSSBY_SATURATION).powi(2) * (self.spin / SOLAR_ANGULAR_VELOCITY);
+        let saturated = -gamma
+            * (ROSSBY_SUN / ROSSBY_SATURATION).powi(2)
+            * (self.spin / SOLAR_ANGULAR_VELOCITY);
         // Smooth tanh blend between regimes to avoid a discontinuous torque jump at ROSSBY_SATURATION.
         // The hard if/else causes the integrator to straddle the boundary and loop indefinitely
         // (observed: ~17% torque jump at Ro = 0.09 leads to 13M+ rejected steps at the same timestamp).
@@ -527,7 +528,6 @@ impl Star {
         }
         let blend = 0.5 * (1.0 + x.tanh());
         blend * unsaturated + (1.0 - blend) * saturated
-        
     }
 
     // Stellar wind torque during the evolved phases of the star.

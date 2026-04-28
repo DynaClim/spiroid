@@ -492,7 +492,6 @@ impl Star {
         // A clean study should be made again before changing this.
 
         // There is a chance the current gamma is only for solar mass star
-        // check 8e23 what is it
         // Matt et al. 2015, Eq. 8
         let gamma = 8e23 * (self.radius / SOLAR_RADIUS).powf(3.1) * sqrt!(self.mass / SOLAR_MASS);
         // Wind braking torque in Joules, following (Matt et al. 2015)

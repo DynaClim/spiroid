@@ -1,6 +1,6 @@
 pub(crate) mod star_csv;
 use crate::constants::{
-    GRAVITATIONAL, PI, ROSSBY_SATURATION, ROSSBY_SUN, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
+    GRAVITATIONAL, PI, ROSSBY_SATURATION_ARDESTANI, ROSSBY_SUN_ARDESTANI, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
     SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS, TWO_PI,
 };
 use crate::universe::particles::{ParticleT, Planet};
@@ -475,7 +475,7 @@ impl Star {
     fn mass_loss_rate(&self) -> f64 {
         // Mass loss rate due to stellar wind
         let mass_loss = SOLAR_MASS_LOSS_RATE
-            * (max!(self.rossby, ROSSBY_SATURATION) / ROSSBY_SUN).powi(-2)
+            * (max!(self.rossby, ROSSBY_SATURATION_ARDESTANI) / ROSSBY_SUN_ARDESTANI).powi(-2)
             * (self.mass / SOLAR_MASS).powi(4);
 
         mass_loss * SOLAR_MASS / SECONDS_IN_YEAR
@@ -501,21 +501,21 @@ impl Star {
             * (self.spin / SOLAR_ANGULAR_VELOCITY).powi(3);
         // Matt et al. 2015, Eq. 7 (saturated regime, Ro <= Ro_sat)
         let saturated = -gamma
-            * (ROSSBY_SUN / ROSSBY_SATURATION).powi(2)
+            * (ROSSBY_SUN_ARDESTANI / ROSSBY_SATURATION_ARDESTANI).powi(2)
             * (self.spin / SOLAR_ANGULAR_VELOCITY);
-        // Smooth tanh blend between regimes to avoid a discontinuous torque jump at ROSSBY_SATURATION.
+        // Smooth tanh blend between regimes to avoid a discontinuous torque jump at ROSSBY_SATURATION_ARDESTANI.
         // The hard if/else causes the integrator to straddle the boundary and loop indefinitely
         // (observed: ~17% torque jump at Ro = 0.09 leads to 13M+ rejected steps at the same timestamp).
         // blend → 0 (saturated) when Ro << Ro_sat, → 1 (unsaturated) when Ro >> Ro_sat.
         // blend_width = 0.1 means the transition spans ±10% of Ro_sat; physically negligible.
 
         // let blend_width = 0.1_f64;
-        // let x = (self.rossby - ROSSBY_SATURATION) / (ROSSBY_SATURATION * blend_width);
+        // let x = (self.rossby - ROSSBY_SATURATION_ARDESTANI) / (ROSSBY_SATURATION_ARDESTANI * blend_width);
         // let blend = 0.5 * (1.0 + x.tanh());
         // blend * unsaturated + (1.0 - blend) * saturated
 
         let blend_width = 0.1_f64;
-        let x = (self.rossby - ROSSBY_SATURATION) / (ROSSBY_SATURATION * blend_width);
+        let x = (self.rossby - ROSSBY_SATURATION_ARDESTANI) / (ROSSBY_SATURATION_ARDESTANI * blend_width);
         // tanh asymptotes: at |x| > 5 the residual blend fraction (~1e-9)
         // multiplied by extreme unsaturated values (~1e180) still overflows.
         // Hard-clamp to the pure branch outside the transition window.

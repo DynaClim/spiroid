@@ -1,6 +1,6 @@
 use crate::constants::{
     BOLTZMANN_CONST, GRAVITATIONAL, MAGNETIC_PERMEABILITY_OF_VACUUM, PI, PROTON_MASS,
-    ROSSBY_SATURATION, ROSSBY_SUN, SECONDS_IN_DAY, SOLAR_CORONA_DENSITY, SOLAR_CORONA_TEMPERATURE,
+    ROSSBY_SATURATION_ARDESTANI, ROSSBY_SUN_ARDESTANI, SECONDS_IN_DAY, SOLAR_CORONA_DENSITY, SOLAR_CORONA_TEMPERATURE,
     SOLAR_MASS, SOLAR_SURFACE_MAGNETIC_FIELD, TWO_PI,
 };
 use crate::universe::particles::{Planet, Star, magnetic_pressure};
@@ -118,27 +118,27 @@ impl IsothermalWind {
     // Ahuir et al. 2020, Eq. 67
     fn magnetic_field(star_mass: f64, star_rossby: f64) -> f64 {
         SOLAR_SURFACE_MAGNETIC_FIELD
-            * (max!(star_rossby, ROSSBY_SATURATION) / ROSSBY_SUN).powi(-1)
+            * (max!(star_rossby, ROSSBY_SATURATION_ARDESTANI) / ROSSBY_SUN_ARDESTANI).powi(-1)
             * (star_mass / SOLAR_MASS).powf(-1.76)
     }
 
     // Estimate the stellar coronal density based on scaling laws.
     // Ahuir et al. 2020, Eq. 66
     fn coronal_density(star_mass: f64, star_rossby: f64) -> f64 {
-        let max_rossby = max!(star_rossby, ROSSBY_SATURATION);
+        let max_rossby = max!(star_rossby, ROSSBY_SATURATION_ARDESTANI);
 
         SOLAR_CORONA_DENSITY
-            * (ROSSBY_SUN / max_rossby).powf(1.07)
+            * (ROSSBY_SUN_ARDESTANI / max_rossby).powf(1.07)
             * (star_mass / SOLAR_MASS).powf(1.97)
     }
 
     // Estimate the stellar coronal temperature based on scaling laws.
     // Ahuir et al. 2020, Eq. 65
     fn coronal_temperature(star_mass: f64, star_rossby: f64) -> f64 {
-        let max_rossby = max!(star_rossby, ROSSBY_SATURATION);
+        let max_rossby = max!(star_rossby, ROSSBY_SATURATION_ARDESTANI);
 
         SOLAR_CORONA_TEMPERATURE
-            * (ROSSBY_SUN / max_rossby).powf(0.11)
+            * (ROSSBY_SUN_ARDESTANI / max_rossby).powf(0.11)
             * (star_mass / SOLAR_MASS).powf(0.12)
     }
 

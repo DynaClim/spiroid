@@ -1,6 +1,6 @@
 pub(crate) mod star_csv;
 use crate::constants::{
-    GRAVITATIONAL, PI, ROSSBY_SATURATION_ARDESTANI, ROSSBY_SUN_ARDESTANI, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
+    GRAVITATIONAL, PI, ROSSBY_SATURATION_ARDESTANI, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
     SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS, TWO_PI,
 };
 use crate::universe::particles::{ParticleT, Planet};
@@ -478,10 +478,28 @@ impl Star {
     fn mass_loss_rate(&self) -> f64 {
         // Mass loss rate due to stellar wind
         let mass_loss = SOLAR_MASS_LOSS_RATE
-            * (max!(self.rossby, ROSSBY_SATURATION_ARDESTANI) / ROSSBY_SUN_ARDESTANI).powi(-2)
+            * (max!(self.rossby, ROSSBY_SATURATION_ARDESTANI) / self.rossby_sun_code()).powi(-2)
             * (self.mass / SOLAR_MASS).powi(4);
 
         mass_loss * SOLAR_MASS / SECONDS_IN_YEAR
+    }
+
+    // Solar Rossby number in this code's own convention, Ro = P_rot / tau_cz with the solar
+    // turnover time the code uses as reference (convective_turnover_time_sun, the Ardestani
+    // et al. 2017 formula at the solar convective mass fraction 0.02, set in initialise):
+    // 25.38 d / 24.61 d = 1.031.
+    //
+    // It replaces the fixed ROSSBY_SUN_ARDESTANI = 1.113 wherever a solar Rossby number
+    // normalises a Rossby scaling (wind saturated amplitude, mass-loss rate, magnetism).
+    // The fixed value was derived with Ardestani's own stellar model and disagrees with the
+    // implicit value this code carries through the unsaturated wind branch,
+    // (tau_cz / tau_cz_sun)^2 (spin / SOLAR_ANGULAR_VELOCITY)^3; using two different Suns
+    // made the two wind branches miss each other by +16.5% at Ro = ROSSBY_SATURATION_ARDESTANI
+    // (the jump the former tanh blend smoothed). With one Sun the branches meet exactly.
+    // The implied saturation amplitude chi = rossby_sun_code / ROSSBY_SATURATION_ARDESTANI
+    // = 11.5 lies within the chi = 10-15 range quoted by Matt et al. 2015.
+    pub(crate) fn rossby_sun_code(&self) -> f64 {
+        (TWO_PI / SOLAR_ANGULAR_VELOCITY) / self.convective_turnover_time_sun
     }
 
     // Stellar wind torque.
@@ -505,33 +523,26 @@ impl Star {
             * (self.convective_turnover_time / self.convective_turnover_time_sun).powi(2)
             * (self.spin / SOLAR_ANGULAR_VELOCITY).powi(3);
         // Matt et al. 2015, Eq. 7 (saturated regime, Ro <= Ro_sat)
+        // Amplitude chi^2 = (rossby_sun_code / ROSSBY_SATURATION_ARDESTANI)^2 with the same
+        // solar Rossby number the unsaturated branch carries, so the branches meet exactly at
+        // the switch (see `rossby_sun_code`).
         let saturated = -gamma
-            * (ROSSBY_SUN_ARDESTANI / ROSSBY_SATURATION_ARDESTANI).powi(2)
+            * (self.rossby_sun_code() / ROSSBY_SATURATION_ARDESTANI).powi(2)
             * (self.spin / SOLAR_ANGULAR_VELOCITY);
-        // Smooth tanh blend between regimes to avoid a discontinuous torque jump at ROSSBY_SATURATION_ARDESTANI.
-        // The hard if/else causes the integrator to straddle the boundary and loop indefinitely
-        // (observed: ~17% torque jump at Ro = 0.09 leads to 13M+ rejected steps at the same timestamp).
-        // blend → 0 (saturated) when Ro << Ro_sat, → 1 (unsaturated) when Ro >> Ro_sat.
-        // blend_width = 0.1 means the transition spans ±10% of Ro_sat; physically negligible.
-
+        // With the branches continuous at the boundary, the tanh blend that smoothed the
+        // former +16.5% torque jump (and its overflow clamps) is unnecessary; the hard switch
+        // is exact. Kept below, commented out, for reference:
         // let blend_width = 0.1_f64;
         // let x = (self.rossby - ROSSBY_SATURATION_ARDESTANI) / (ROSSBY_SATURATION_ARDESTANI * blend_width);
+        // if x <= -5.0 { return saturated; }
+        // if x >= 5.0 { return unsaturated; }
         // let blend = 0.5 * (1.0 + x.tanh());
         // blend * unsaturated + (1.0 - blend) * saturated
-
-        let blend_width = 0.1_f64;
-        let x = (self.rossby - ROSSBY_SATURATION_ARDESTANI) / (ROSSBY_SATURATION_ARDESTANI * blend_width);
-        // tanh asymptotes: at |x| > 5 the residual blend fraction (~1e-9)
-        // multiplied by extreme unsaturated values (~1e180) still overflows.
-        // Hard-clamp to the pure branch outside the transition window.
-        if x <= -5.0 {
-            return saturated;
+        if self.rossby > ROSSBY_SATURATION_ARDESTANI {
+            unsaturated
+        } else {
+            saturated
         }
-        if x >= 5.0 {
-            return unsaturated;
-        }
-        let blend = 0.5 * (1.0 + x.tanh());
-        blend * unsaturated + (1.0 - blend) * saturated
     }
 
     // Stellar wind torque during the evolved phases of the star.

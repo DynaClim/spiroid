@@ -1,6 +1,6 @@
 use crate::constants::{
     BOLTZMANN_CONST, GRAVITATIONAL, MAGNETIC_PERMEABILITY_OF_VACUUM, PI, PROTON_MASS,
-    ROSSBY_SATURATION_ARDESTANI, ROSSBY_SUN_ARDESTANI, SECONDS_IN_DAY, SOLAR_CORONA_DENSITY, SOLAR_CORONA_TEMPERATURE,
+    ROSSBY_SATURATION_ARDESTANI, SECONDS_IN_DAY, SOLAR_CORONA_DENSITY, SOLAR_CORONA_TEMPERATURE,
     SOLAR_MASS, SOLAR_SURFACE_MAGNETIC_FIELD, TWO_PI,
 };
 use crate::universe::particles::{Planet, Star, magnetic_pressure};
@@ -84,14 +84,14 @@ impl IsothermalWind {
     // Calculates the characteristics of the stellar wind at a given distance from the star.
     // The characteristics are computed following the magnetized model of Weber & Davis (1967)
     fn init_weber_davis(&mut self, planet: &Planet, star: &Star) {
-        let surface_magnetic_field = Self::magnetic_field(star.mass, star.rossby);
+        let surface_magnetic_field = Self::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
         self.radial_magnetic_field = Self::radial_magnetic_field(
             surface_magnetic_field,
             star.radius,
             planet.semi_major_axis,
         );
 
-        let coronal_temperature = Self::coronal_temperature(star.mass, star.rossby);
+        let coronal_temperature = Self::coronal_temperature(star.mass, star.rossby, star.rossby_sun_code());
         self.speed_of_sound = Self::speed_of_sound(coronal_temperature);
 
         self.critical_radius = GRAVITATIONAL * star.mass / (2. * self.speed_of_sound.powi(2));
@@ -104,7 +104,7 @@ impl IsothermalWind {
         self.wind_velocity = self.weber_davis_velocity_profile(planet.semi_major_axis, star); // Requires alfven_speed_at_alfven_radius
         self.surface_wind_velocity = self.weber_davis_velocity_profile(star.radius, star); // Requires alfven_speed_at_alfven_radius
 
-        let coronal_density = Self::coronal_density(star.mass, star.rossby);
+        let coronal_density = Self::coronal_density(star.mass, star.rossby, star.rossby_sun_code());
         self.wind_density =
             self.density_profile(star.radius, coronal_density, planet.semi_major_axis);
 
@@ -116,29 +116,30 @@ impl IsothermalWind {
 
     // Estimate the stellar surface magnetic field based on scaling laws.
     // Ahuir et al. 2020, Eq. 67
-    fn magnetic_field(star_mass: f64, star_rossby: f64) -> f64 {
+    // `rossby_sun`: the solar Rossby number normalising the scaling (Star::rossby_sun_code).
+    fn magnetic_field(star_mass: f64, star_rossby: f64, rossby_sun: f64) -> f64 {
         SOLAR_SURFACE_MAGNETIC_FIELD
-            * (max!(star_rossby, ROSSBY_SATURATION_ARDESTANI) / ROSSBY_SUN_ARDESTANI).powi(-1)
+            * (max!(star_rossby, ROSSBY_SATURATION_ARDESTANI) / rossby_sun).powi(-1)
             * (star_mass / SOLAR_MASS).powf(-1.76)
     }
 
     // Estimate the stellar coronal density based on scaling laws.
     // Ahuir et al. 2020, Eq. 66
-    fn coronal_density(star_mass: f64, star_rossby: f64) -> f64 {
+    fn coronal_density(star_mass: f64, star_rossby: f64, rossby_sun: f64) -> f64 {
         let max_rossby = max!(star_rossby, ROSSBY_SATURATION_ARDESTANI);
 
         SOLAR_CORONA_DENSITY
-            * (ROSSBY_SUN_ARDESTANI / max_rossby).powf(1.07)
+            * (rossby_sun / max_rossby).powf(1.07)
             * (star_mass / SOLAR_MASS).powf(1.97)
     }
 
     // Estimate the stellar coronal temperature based on scaling laws.
     // Ahuir et al. 2020, Eq. 65
-    fn coronal_temperature(star_mass: f64, star_rossby: f64) -> f64 {
+    fn coronal_temperature(star_mass: f64, star_rossby: f64, rossby_sun: f64) -> f64 {
         let max_rossby = max!(star_rossby, ROSSBY_SATURATION_ARDESTANI);
 
         SOLAR_CORONA_TEMPERATURE
-            * (ROSSBY_SUN_ARDESTANI / max_rossby).powf(0.11)
+            * (rossby_sun / max_rossby).powf(0.11)
             * (star_mass / SOLAR_MASS).powf(0.12)
     }
 

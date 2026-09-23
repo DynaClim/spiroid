@@ -106,7 +106,7 @@ fn _mass_transfer_envelope_to_core_torque() {
 
 #[test]
 fn _mass_loss_rate() {
-    let expected = 439989563.7273058;
+    let expected = 377768355.2252772;
     let star = test_star();
     let result = star.mass_loss_rate();
     assert_eq!(expected, result);
@@ -114,7 +114,7 @@ fn _mass_loss_rate() {
 
 #[test]
 fn _alfven_radius_estimate() {
-    let expected = 12999882215.232397;
+    let expected = 14029681682.566864;
     let star = test_star();
     let result = star.alfven_radius_estimate();
     assert_eq!(expected, result);
@@ -156,7 +156,7 @@ fn _tidal_frequency() {
 
 #[test]
 fn _magnetic_torque_enabled() {
-    let expected = 4.648379104022687e22;
+    let expected = 4.186504303051605e22;
     let mut star = test_star();
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);

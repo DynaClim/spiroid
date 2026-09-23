@@ -1,22 +1,40 @@
 pub(crate) mod star_csv;
 use crate::constants::{
-    GRAVITATIONAL, PI, ROSSBY_SATURATION_ARDESTANI, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
-    SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS, TWO_PI,
+    CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026, GRAVITATIONAL, PI, ROSSBY_SATURATION_ARDESTANI,
+    SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY, SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS,
+    TWO_PI,
 };
 use crate::universe::particles::{ParticleT, Planet};
 use serde::{Deserialize, Serialize};
 pub use star_csv::StarCsv;
 use std::path::PathBuf;
 
-use anyhow::{Error, Result};
+use anyhow::{Error, Result, bail};
 use sci_file::Interpolator1D;
 
+// Source of the convective turnover time of a `Starevol` star.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Default)]
+pub(crate) enum TurnoverTime {
+    // Ardestani et al. 2017 fit in the convective-zone mass fraction, evaluated along the
+    // track; the solar reference is the same fit at the solar mass fraction 0.02.
+    #[default]
+    Ardestani,
+    // `convective_turnover_time` column of the star file (s), e.g. the tauc_hp profile
+    // quantity of the 2026 STAREVOL tracks; the solar reference is
+    // `CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026`.
+    FromFile,
+}
+
 #[derive(Deserialize, Serialize, PartialEq, Clone, Default)]
+#[serde(deny_unknown_fields)]
 enum Evolution {
     #[default]
     Disabled,
     Starevol {
         star_file_path: PathBuf,
+        // Absent from the input: `Ardestani`.
+        #[serde(default)]
+        convective_turnover_time: TurnoverTime,
         #[serde(skip)]
         interpolator: Interpolator1D<StarCsv>,
     },
@@ -32,8 +50,17 @@ impl std::fmt::Debug for Evolution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Evolution::Disabled => write!(f, "Disabled"),
-            Evolution::Starevol { star_file_path, .. } => {
-                write!(f, "Starevol: \"{}\"", &star_file_path.display())
+            Evolution::Starevol {
+                star_file_path,
+                convective_turnover_time,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Starevol: \"{}\" (convective_turnover_time: {:?})",
+                    &star_file_path.display(),
+                    convective_turnover_time
+                )
             }
             Evolution::Mesa { star_file_path, .. } => {
                 write!(f, "Mesa: \"{}\"", &star_file_path.display())
@@ -151,6 +178,19 @@ impl Star {
         star_ages: &[f64],
         star_values: &[StarCsv],
     ) -> Result<(), Error> {
+        // A missing `convective_turnover_time` column deserialises as zeros; when the turnover
+        // time is to be read from the file this would give a windless run, so refuse it here.
+        if self.turnover_time_from_file()
+            && !star_values
+                .iter()
+                .any(|row| row.convective_turnover_time > 0.0)
+        {
+            bail!(
+                "the convective turnover time is read from the star file {:?} but its \
+                 `convective_turnover_time` column (s) is missing or all zero",
+                self.evolution
+            );
+        }
         match self.evolution {
             Evolution::Disabled => {}
             Evolution::Starevol {
@@ -165,6 +205,21 @@ impl Star {
             }
         }
         Ok(())
+    }
+
+    // `true` when the convective turnover time comes from the star file rather than the
+    // Ardestani et al. 2017 fit: always for `Mesa`, opt-in for `Starevol`.
+    // 23/Sep/2026: the modification is made mostly for using the new starevol data from
+    // Louis Amard, so Mesa data related physics should be tested and examined later.
+    fn turnover_time_from_file(&self) -> bool {
+        matches!(
+            self.evolution,
+            Evolution::Mesa { .. }
+                | Evolution::Starevol {
+                    convective_turnover_time: TurnoverTime::FromFile,
+                    ..
+                }
+        )
     }
 
     // Provide a reference to the stellar evolution file if evolution is interpolated.
@@ -204,8 +259,10 @@ impl Star {
                 self.convective_moment_of_inertia_derivative =
                     new.convective_moment_of_inertia_derivative;
 
-                if matches!(self.evolution, Evolution::Mesa { .. }) {
+                if self.turnover_time_from_file() {
                     self.convective_turnover_time = new.convective_turnover_time;
+                }
+                if matches!(self.evolution, Evolution::Mesa { .. }) {
                     self.evolved_mass_loss_rate = new.mass_loss_rate;
                 }
 
@@ -250,9 +307,16 @@ impl Star {
 
     pub(crate) fn initialise(&mut self, time: f64) -> Result<()> {
         self.stellar_evolution(time)?;
-        // 0.02 is the convection zone mass of the Sun divided by its total mass.
-        // Christensen-Dalsgaard et al. 1991
-        self.convective_turnover_time_sun = Self::convective_turnover_time(0.02);
+        self.convective_turnover_time_sun = match self.evolution {
+            // Same quantity as the file column, taken at the solar age.
+            Evolution::Starevol {
+                convective_turnover_time: TurnoverTime::FromFile,
+                ..
+            } => CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026,
+            // 0.02 is the convection zone mass of the Sun divided by its total mass.
+            // Christensen-Dalsgaard et al. 1991
+            _ => Self::convective_turnover_time(0.02),
+        };
 
         Ok(())
     }
@@ -284,8 +348,20 @@ impl Star {
 
         if matches!(self.evolution, Evolution::Mesa { .. }) {
             self.core_envelope_coupling_constant = self.evolving_core_envelope_coupling_constant(); // requres mass, spin
+        }
+
+        if self.turnover_time_from_file() {
+            // Already set by `stellar_evolution`; zero means the file has no value at this age
+            // (e.g. the 2026 STAREVOL columns are zero before the radiative core appears).
+            if !(self.convective_turnover_time > 0.0) {
+                bail!(
+                    "convective turnover time from the star file is {} s at age {:.4} Myr ({:?})",
+                    self.convective_turnover_time,
+                    self.age / SECONDS_IN_YEAR / 1e6,
+                    self.evolution
+                );
+            }
         } else {
-            // Only used by tides and magnetism
             let convective_zone_mass_ratio = (self.mass - self.radiative_mass) / self.mass;
             self.convective_turnover_time =
                 Self::convective_turnover_time(convective_zone_mass_ratio);

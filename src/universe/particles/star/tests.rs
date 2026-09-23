@@ -13,6 +13,7 @@ use sci_file::read_csv_rows_from_file;
 fn add_interpolate_to_test_star(star: &mut Star) {
     star.evolution = Evolution::Starevol {
         star_file_path: "examples/data/star/evolution/savgol_08.csv".into(),
+        convective_turnover_time: TurnoverTime::Ardestani,
         interpolator: Interpolator1D::new(),
     };
     // Load stellar evolution data from file.

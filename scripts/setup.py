@@ -158,8 +158,24 @@ def star_setup(effects):
 
     if effects["STAR_EVOLUTION_ENABLED"]:
         star_base["evolution"] = [
-            {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_08.csv"}},
-            {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_09.csv"}},
+            # {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_08.csv"}},
+            # {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_09.csv"}},
+            # Starevol option "convective_turnover_time" (the key is only accepted under Starevol):
+            #   "Ardestani" (default when the key is absent): tau_cz from the Ardestani et al. 2017
+            #     fit in the convective-zone mass fraction, tau_cz_sun from the same fit at 0.02.
+            #   "FromFile": tau_cz from the file's convective_turnover_time column (s), tau_cz_sun
+            #     from astro-const CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026. spiroid refuses the
+            #     run if the column is missing or all zero.
+            # savgol_*.csv are the old STAREVOL tracks: they carry no turnover timescale, so only
+            # "Ardestani" works with them.
+            {"Starevol": {"star_file_path": "examples/data/star/evolution/savgol_10.csv",
+                          "convective_turnover_time": "Ardestani"}},
+            # starevol_*_2026.csv (Louis Amard, 2026 STAREVOL tracks converted with
+            # scripts/convert_evol_profile_to_csv.py --tauc hp) carry tauc_hp in seconds.
+            {"Starevol": {"star_file_path": "examples/data/star/evolution/starevol_m1p00_2026.csv",
+                          "convective_turnover_time": "FromFile"}},
+            # Mesa has no such option: the file's convective_turnover_time and mass_loss_rate
+            # columns are always read, and tau_cz_sun is the Ardestani fit at 0.02.
             {"Mesa": {"star_file_path": "examples/data/star/evolution/mesa_10.csv"}},
         ]
     else:

@@ -47,6 +47,7 @@ pub fn test_star() -> Star {
     star.radiative_mass_derivative = 23849190556.112328;
 
     star.convective_turnover_time_sun = Star::convective_turnover_time(0.02);
+    star.wind_torque_prefactor = 8e23;
     star.spin = 1.2583862403723232e-6;
     star.angular_momentum_redistribution = 2.4499591272215565e37;
 

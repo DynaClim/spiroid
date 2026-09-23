@@ -147,6 +147,9 @@ def star_setup(effects):
         "footpoint_conductance": [None],  # Do not edit.
         "evolution": [None],  # Do not edit.
         "sigma_bar": [None],  # Do not edit.
+        # J: normalisation of the Matt et al. 2015 wind torque (gamma_sun, Eq. 8).
+        # Keep this key after the seven above (they are unpacked by position in config.py).
+        "wind_torque_prefactor": [8e23],
     }
 
     if effects["MAGNETIC_EFFECT_ENABLED"]:

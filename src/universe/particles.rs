@@ -7,7 +7,7 @@ pub(crate) mod star;
 pub use planet::Planet;
 pub use star::{Star, StarCsv};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -40,7 +40,16 @@ impl Particle {
 
     pub(crate) fn initialise(&mut self, time: f64) -> Result<()> {
         match &mut self.kind {
-            ParticleType::Star(star) => star.initialise(time)?,
+            ParticleType::Star(star) => {
+                // Missing inputs deserialise to 0 (serde default): refuse to run the wind with
+                // an unset prefactor instead of silently applying no braking.
+                if self.wind.wind_torque() && !(star.wind_torque_prefactor > 0.0) {
+                    bail!(
+                        "wind is enabled but the star input `wind_torque_prefactor` (J) is missing or not positive"
+                    );
+                }
+                star.initialise(time)?;
+            }
             ParticleType::Planet(planet) => planet.initialise(),
         }
 

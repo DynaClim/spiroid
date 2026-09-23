@@ -89,6 +89,9 @@ def make_stars(star_base, effects):
             evolution,
             sigma_bar,
         ) = star_vals[:7]
+        # Remaining entries are looked up by name so that setup scripts written before a
+        # key existed keep working (the corresponding Rust field then takes its default).
+        named = dict(zip(star_base.keys(), star_vals))
 
         body = {}
         star = {
@@ -96,6 +99,14 @@ def make_stars(star_base, effects):
             "core_envelope_coupling_constant": core_envelope_coupling_constant,
             "evolution": "Disabled",
         }
+        # Normalisation of the Matt et al. 2015 wind torque (J): required when the wind is
+        # enabled (spiroid refuses to run without it).
+        if effects["WIND_ENABLED"]:
+            if named.get("wind_torque_prefactor") is None:
+                raise KeyError(
+                    "star_setup must provide 'wind_torque_prefactor' (J) when WIND_ENABLED"
+                )
+            star["wind_torque_prefactor"] = named["wind_torque_prefactor"]
 
         if effects["STAR_TIDES_ENABLED"]:
             body["tides"] = {
@@ -112,8 +123,8 @@ def make_stars(star_base, effects):
         else:
             star["mass"] = mass
             star["radius"] = radius
-            star["radiative_moment_of_inertia"] = star_vals[7]
-            star["convective_moment_of_inertia"] = star_vals[8]
+            star["radiative_moment_of_inertia"] = named["radiative_moment_of_inertia"]
+            star["convective_moment_of_inertia"] = named["convective_moment_of_inertia"]
 
         if not effects["WIND_ENABLED"]:
             body["wind"] = "Disabled"

@@ -50,6 +50,9 @@ pub struct Star {
     pub(crate) mass: f64,                            // (kg)
     pub(crate) spin: f64,                            // (rad.s-1)
     pub(crate) core_envelope_coupling_constant: f64, // (s)
+    // Normalisation of the wind torque, gamma_sun of Matt et al. 2015 Eq. 8 (J). Required
+    // when the wind is enabled (checked in `Particle::initialise`); historically 8e23.
+    pub(crate) wind_torque_prefactor: f64, // (J)
 
     // Evolution model of the star (if enabled).
     evolution: Evolution,
@@ -493,7 +496,9 @@ impl Star {
 
         // There is a chance the current gamma is only for solar mass star
         // Matt et al. 2015, Eq. 8
-        let gamma = 8e23 * (self.radius / SOLAR_RADIUS).powf(3.1) * sqrt!(self.mass / SOLAR_MASS);
+        let gamma = self.wind_torque_prefactor
+            * (self.radius / SOLAR_RADIUS).powf(3.1)
+            * sqrt!(self.mass / SOLAR_MASS);
         // Wind braking torque in Joules, following (Matt et al. 2015)
         // Matt et al. 2015, Eq. 6 (unsaturated regime, Ro > Ro_sat)
         let unsaturated = -gamma

@@ -7,6 +7,12 @@ use crate::universe::particles::{Planet, Star, magnetic_pressure};
 
 use serde::{Deserialize, Serialize};
 
+// Initial guess of `alfven_speed_at_alfven_radius`: when |D| is below this fraction of the squared
+// escape speed at the Alfven radius (D as defined there), the guess is taken from the sound speed.
+const ALFVEN_SPEED_GUESS_SWITCH: f64 = 1e-2;
+// Multiple of the sound speed used as that guess.
+const ALFVEN_SPEED_GUESS_SOUND_SPEED_FACTOR: f64 = 2.;
+
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum MagneticModel {
     #[default]
@@ -84,14 +90,16 @@ impl IsothermalWind {
     // Calculates the characteristics of the stellar wind at a given distance from the star.
     // The characteristics are computed following the magnetized model of Weber & Davis (1967)
     fn init_weber_davis(&mut self, planet: &Planet, star: &Star) {
-        let surface_magnetic_field = Self::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
+        let surface_magnetic_field =
+            Self::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
         self.radial_magnetic_field = Self::radial_magnetic_field(
             surface_magnetic_field,
             star.radius,
             planet.semi_major_axis,
         );
 
-        let coronal_temperature = Self::coronal_temperature(star.mass, star.rossby, star.rossby_sun_code());
+        let coronal_temperature =
+            Self::coronal_temperature(star.mass, star.rossby, star.rossby_sun_code());
         self.speed_of_sound = Self::speed_of_sound(coronal_temperature);
 
         self.critical_radius = GRAVITATIONAL * star.mass / (2. * self.speed_of_sound.powi(2));
@@ -328,23 +336,31 @@ impl IsothermalWind {
     fn alfven_speed_at_alfven_radius(&self, star: &Star) -> f64 {
         // Uses a Newton-Raphson method based on the fact that the wind profile will pass through the sonic and the alfvenic points.
         // Initial guess for the integration constant.
-        let mut integration_constant = {
-            if (-2. * GRAVITATIONAL * star.mass / star.alfven_radius)
-                + star.spin.powi(2) * star.alfven_radius.powi(2)
-                < 0.
-            {
-                0.445
-            } else {
-                0.6
-            }
-        };
+        // D = (spin * alfven_radius)^2 - (escape speed at the alfven radius)^2. F(1, 1) = 0 gives
+        // integration_constant = 0.5 + D / (2 * alfven_speed^2).
+        let escape_speed_squared = 2. * GRAVITATIONAL * star.mass / star.alfven_radius;
+        let discriminant = star.spin.powi(2) * star.alfven_radius.powi(2) - escape_speed_squared;
 
-        // Initial guess of the Alfven speed ensuring a super-alfvenic wind,  F(1, 1) = 0.
-        let mut alfven_speed = sqrt!(
-            ((-2. * GRAVITATIONAL * star.mass / star.alfven_radius)
-                + star.spin.powi(2) * star.alfven_radius.powi(2))
-                / (2. * integration_constant - 1.)
-        );
+        let (mut integration_constant, mut alfven_speed) =
+            if abs!(discriminant) < ALFVEN_SPEED_GUESS_SWITCH * escape_speed_squared {
+                // Near D = 0 the guess sqrt(D / (2 C - 1)) below vanishes and the Newton-Raphson
+                // iteration can fall onto a spurious root (alfven_speed << speed_of_sound) where
+                // |F| < 1e-7 is unreachable in double precision. Start from the sound speed instead,
+                // with the integration constant consistent with that guess.
+                let alfven_speed = ALFVEN_SPEED_GUESS_SOUND_SPEED_FACTOR * self.speed_of_sound;
+                (
+                    0.5 + discriminant / (2. * alfven_speed.powi(2)),
+                    alfven_speed,
+                )
+            } else {
+                // Initial guess for the integration constant.
+                let integration_constant = if discriminant < 0. { 0.445 } else { 0.6 };
+                // Initial guess of the Alfven speed ensuring a super-alfvenic wind,  F(1, 1) = 0.
+                (
+                    integration_constant,
+                    sqrt!(discriminant / (2. * integration_constant - 1.)),
+                )
+            };
 
         // Function F to cancel, as a function of the Alfven radius (F(speed_of_sound / alfven_speed_at_alfven_radius, critical_radius / alfven_radius) = 0 by knowing alfven_speed_at_alfven_radius as a function of integration_constant from F(1, 1) = 0)
         let mut energy_flux_difference = self.total_energy_flux_minus_constant(

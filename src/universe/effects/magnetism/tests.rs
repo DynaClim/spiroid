@@ -42,7 +42,8 @@ fn _radial_magnetic_field() {
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
     wind.init_weber_davis(&planet, &star);
-    let surface_magnetic_field = IsothermalWind::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
+    let surface_magnetic_field =
+        IsothermalWind::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
     let result = IsothermalWind::radial_magnetic_field(
         surface_magnetic_field,
         star.radius,
@@ -58,7 +59,8 @@ fn _magnetic_pressure() {
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
     wind.init_weber_davis(&planet, &star);
-    let surface_magnetic_field = IsothermalWind::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
+    let surface_magnetic_field =
+        IsothermalWind::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
     let magnetic_field = IsothermalWind::radial_magnetic_field(
         surface_magnetic_field,
         star.radius,
@@ -75,7 +77,8 @@ fn _density_profile() {
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
     wind.init_weber_davis(&planet, &star);
-    let coronal_density = IsothermalWind::coronal_density(star.mass, star.rossby, star.rossby_sun_code());
+    let coronal_density =
+        IsothermalWind::coronal_density(star.mass, star.rossby, star.rossby_sun_code());
 
     let result = wind.density_profile(star.radius, coronal_density, planet.semi_major_axis);
     assert_eq!(expected, result);

@@ -12,9 +12,10 @@ use std::path::PathBuf;
 use anyhow::{Error, Result, bail};
 use sci_file::Interpolator1D;
 
-// Source of the convective turnover time of a `Starevol` star.
+// Source of the convective turnover time of a `Starevol` star (input key
+// `convective_turnover_time_mode`).
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Default)]
-pub(crate) enum TurnoverTime {
+pub(crate) enum TurnoverTimeMode {
     // Ardestani et al. 2017 fit in the convective-zone mass fraction, evaluated along the
     // track; the solar reference is the same fit at the solar mass fraction 0.02.
     #[default]
@@ -34,7 +35,7 @@ enum Evolution {
         star_file_path: PathBuf,
         // Absent from the input: `Ardestani`.
         #[serde(default)]
-        convective_turnover_time: TurnoverTime,
+        convective_turnover_time_mode: TurnoverTimeMode,
         #[serde(skip)]
         interpolator: Interpolator1D<StarCsv>,
     },
@@ -52,14 +53,14 @@ impl std::fmt::Debug for Evolution {
             Evolution::Disabled => write!(f, "Disabled"),
             Evolution::Starevol {
                 star_file_path,
-                convective_turnover_time,
+                convective_turnover_time_mode,
                 ..
             } => {
                 write!(
                     f,
-                    "Starevol: \"{}\" (convective_turnover_time: {:?})",
+                    "Starevol: \"{}\" (convective_turnover_time_mode: {:?})",
                     &star_file_path.display(),
-                    convective_turnover_time
+                    convective_turnover_time_mode
                 )
             }
             Evolution::Mesa { star_file_path, .. } => {
@@ -216,7 +217,7 @@ impl Star {
             self.evolution,
             Evolution::Mesa { .. }
                 | Evolution::Starevol {
-                    convective_turnover_time: TurnoverTime::FromFile,
+                    convective_turnover_time_mode: TurnoverTimeMode::FromFile,
                     ..
                 }
         )
@@ -310,7 +311,7 @@ impl Star {
         self.convective_turnover_time_sun = match self.evolution {
             // Same quantity as the file column, taken at the solar age.
             Evolution::Starevol {
-                convective_turnover_time: TurnoverTime::FromFile,
+                convective_turnover_time_mode: TurnoverTimeMode::FromFile,
                 ..
             } => CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026,
             // 0.02 is the convection zone mass of the Sun divided by its total mass.

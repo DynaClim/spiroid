@@ -11,7 +11,7 @@ use crate::universe::effects::wind::WindModel;
 use crate::universe::particles::planet::tests::{
     test_planet, test_planet_kaula, test_planet_magnetic, test_planet_mercury,
 };
-use crate::universe::particles::star::tests::{test_star, test_star_evolving};
+use crate::universe::particles::star::tests_mode_ardestani::{test_star, test_star_evolving};
 use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_DISK_LIFETIME, TEST_TIME};
 use crate::universe::{Particle, ParticleType};
 use pretty_assertions::assert_eq;

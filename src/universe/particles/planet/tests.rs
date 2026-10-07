@@ -1,5 +1,5 @@
 use super::*;
-use crate::universe::particles::star::tests::test_star;
+use crate::universe::particles::star::tests_mode_ardestani::test_star;
 use pretty_assertions::assert_eq;
 
 // Test setup functions

@@ -1,7 +1,7 @@
 use super::*;
 use crate::universe::effects::tides::kaula::tests::test_mpq;
 use crate::universe::particles::planet::tests::test_planet_kaula;
-use crate::universe::particles::star::tests::test_star;
+use crate::universe::particles::star::tests_mode_ardestani::test_star;
 use crate::universe::tests::TEST_TIME;
 use num_complex::c64;
 use pretty_assertions::assert_eq;

@@ -4,7 +4,7 @@ use crate::universe::effects::tides::kaula::love_number::tests::{
 };
 use crate::universe::effects::tides::kaula::polynomials::tests::test_polynomials;
 use crate::universe::particles::planet::tests::test_planet_kaula;
-use crate::universe::particles::star::tests::test_star;
+use crate::universe::particles::star::tests_mode_ardestani::test_star;
 use crate::universe::tests::TEST_TIME;
 use pretty_assertions::assert_eq;
 

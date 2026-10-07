@@ -530,7 +530,7 @@ impl IsothermalWind {
 }
 
 #[cfg(test)]
-mod tests;
+mod tests_mode_ardestani;
 
 // References:
 // Ahuir et al. (2020), doi: https://doi.org/10.1051/0004-6361/201936974

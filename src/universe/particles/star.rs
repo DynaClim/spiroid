@@ -1,8 +1,8 @@
 pub(crate) mod star_csv;
 use crate::constants::{
-    CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026, GRAVITATIONAL, PI, ROSSBY_SATURATION_ARDESTANI,
-    SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY, SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS,
-    TWO_PI,
+    CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2017, CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026,
+    GRAVITATIONAL, PI, ROSSBY_SATURATION_ARDESTANI, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
+    SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS, TWO_PI,
 };
 use crate::universe::particles::{ParticleT, Planet};
 use serde::{Deserialize, Serialize};
@@ -17,11 +17,12 @@ use sci_file::Interpolator1D;
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Default)]
 pub(crate) enum TurnoverTimeMode {
     // Ardestani et al. 2017 fit in the convective-zone mass fraction, evaluated along the
-    // track; the solar reference is the same fit at the solar mass fraction 0.02.
+    // track; the solar value reference is `CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2017`, the same fit
+    // at the mass fraction of the STAREVOL(old data) 1 Msun track at the solar age.
     #[default]
     Ardestani,
     // `convective_turnover_time` column of the star file (s), e.g. the tauc_hp profile
-    // quantity of the 2026 STAREVOL tracks; the solar reference is
+    // quantity of the 2026 STAREVOL tracks; the solar value reference is
     // `CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026`.
     FromFile,
 }
@@ -314,9 +315,16 @@ impl Star {
                 convective_turnover_time_mode: TurnoverTimeMode::FromFile,
                 ..
             } => CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2026,
+            // The same Ardestani et al. 2017 fit as along the track, evaluated at the
+            // convective-envelope mass fraction of the STAREVOL 1 Msun track at the solar age
+            // (m_conv = 0.01556, 21.42 d), instead of at the assumed fraction 0.02 (24.61 d).
+            Evolution::Starevol {
+                convective_turnover_time_mode: TurnoverTimeMode::Ardestani,
+                ..
+            } => CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2017,
             // 0.02 is the convection zone mass of the Sun divided by its total mass.
             // Christensen-Dalsgaard et al. 1991
-            _ => Self::convective_turnover_time(0.02),
+            Evolution::Disabled | Evolution::Mesa { .. } => Self::convective_turnover_time(0.02),
         };
 
         Ok(())
@@ -575,6 +583,10 @@ impl Star {
     // (the jump the former tanh blend smoothed). With one Sun the branches meet exactly.
     // The implied saturation amplitude chi = rossby_sun_code / ROSSBY_SATURATION_ARDESTANI
     // = 11.5 lies within the chi = 10-15 range quoted by Matt et al. 2015.
+    // RMK: the Rossby_sun_code here depends on self.convective_turnover_time_sun.
+    // It could either be read as a parameter if we are using the starevol 2026 data
+    // , or it could be calculated using the convective_turnover_time(mass fraction at solar age)
+    // if other stellar models(data) are being used.
     pub(crate) fn rossby_sun_code(&self) -> f64 {
         (TWO_PI / SOLAR_ANGULAR_VELOCITY) / self.convective_turnover_time_sun
     }

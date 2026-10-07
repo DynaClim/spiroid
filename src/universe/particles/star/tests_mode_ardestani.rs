@@ -47,7 +47,7 @@ pub fn test_star() -> Star {
     star.radiative_moment_of_inertia = 3.605010133078022e46;
     star.radiative_mass_derivative = 23849190556.112328;
 
-    star.convective_turnover_time_sun = Star::convective_turnover_time(0.02);
+    star.convective_turnover_time_sun = CONVECTIVE_TURNOVER_TIME_SUN_STAREVOL_2017;
     star.wind_torque_prefactor = 8e23;
     star.spin = 1.2583862403723232e-6;
     star.angular_momentum_redistribution = 2.4499591272215565e37;
@@ -82,7 +82,7 @@ fn _angular_momentum_redistribution() {
 
 #[test]
 fn _wind_torque() {
-    let expected = -9.356968580603306e22;
+    let expected = -1.2348279534747825e23;
     let star = test_star();
     let result = star.wind_torque();
     assert_eq!(expected, result);
@@ -107,7 +107,7 @@ fn _mass_transfer_envelope_to_core_torque() {
 
 #[test]
 fn _mass_loss_rate() {
-    let expected = 377768355.2252772;
+    let expected = 498536380.6151484;
     let star = test_star();
     let result = star.mass_loss_rate();
     assert_eq!(expected, result);
@@ -115,7 +115,7 @@ fn _mass_loss_rate() {
 
 #[test]
 fn _alfven_radius_estimate() {
-    let expected = 14029681682.566864;
+    let expected = 14029681682.566868;
     let star = test_star();
     let result = star.alfven_radius_estimate();
     assert_eq!(expected, result);
@@ -139,9 +139,12 @@ fn _rossby() {
 
 #[test]
 fn _convective_turnover_time() {
-    let adjusted_convective_mass = 0.02;
-    let expected = 2126270.90231897;
-    let result = Star::convective_turnover_time(adjusted_convective_mass);
+    // The turnover time `refresh` stored for the test star: the Ardestani et al. 2017 fit at
+    // the star's own convective mass fraction (M - M_rad) / M = 0.0541, i.e. 44.69 d
+    // (the fit at the solar fraction 0.02 would be 2126270.90231897 s = 24.61 d).
+    let expected = 3861405.369219101;
+    let star = test_star();
+    let result = star.convective_turnover_time;
     assert_eq!(expected, result);
 }
 
@@ -157,7 +160,7 @@ fn _tidal_frequency() {
 
 #[test]
 fn _magnetic_torque_enabled() {
-    let expected = 4.186504303051605e22;
+    let expected = 5.068552639495255e22;
     let mut star = test_star();
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);

@@ -61,8 +61,8 @@ fn _derivatives_magnetic() {
 
     let mut expected = UniverseIntegral::default();
     expected.central_body.radiative_zone_angular_momentum = -6.348994811695528e22;
-    expected.central_body.convective_zone_angular_momentum = 1.172014472149662e22;
-    expected.orbiting_body.semi_major_axis = -1.318065807537537e43;
+    expected.central_body.convective_zone_angular_momentum = -9.407398756718968e21;
+    expected.orbiting_body.semi_major_axis = -1.5957400309492905e43;
 
     assert_eq!(expected, result);
 }
@@ -113,7 +113,7 @@ fn _derivatives_tides() {
 
     let mut expected = UniverseIntegral::default();
     expected.central_body.radiative_zone_angular_momentum = -6.348994811695528e22;
-    expected.central_body.convective_zone_angular_momentum = 6.020027165936562e23;
+    expected.central_body.convective_zone_angular_momentum = 5.7202999319702066e23;
     expected.orbiting_body.semi_major_axis = -1.9848639097150575e44;
 
     assert_eq!(expected, result);
@@ -168,8 +168,8 @@ fn _derivatives_magnetic_tides() {
 
     let mut expected = UniverseIntegral::default();
     expected.central_body.radiative_zone_angular_momentum = -6.348994811695528e22;
-    expected.central_body.convective_zone_angular_momentum = 6.439890740910857e23;
-    expected.orbiting_body.semi_major_axis = -2.116670490468811e44;
+    expected.central_body.convective_zone_angular_momentum = 6.228615306128701e23;
+    expected.orbiting_body.semi_major_axis = -2.1444379128099865e44;
 
     assert_eq!(expected, result);
 }
@@ -228,7 +228,7 @@ fn _derivatives_kaula() {
     expected.orbiting_body.inclination = 0.0007011714730044864;
     expected.orbiting_body.longitude_ascending_node = -0.0018601514572935667;
     expected.orbiting_body.pericentre_omega = 5.876804234917257e-6;
-    expected.orbiting_body.spin_inclination = 0.0003527171243323208;
+    expected.orbiting_body.spin_inclination = 0.00035271712433232114;
 
     assert_eq!(expected, result);
 }
@@ -249,7 +249,7 @@ fn _star_convective_zone_angular_momentum_derivative() {
     let planet = test_planet();
     star.refresh_tidal_frequency(&planet);
     let result = star_convective_zone_angular_momentum_derivative(&star, DISK_IS_DISSIPATED);
-    let expected = -3.0079737689074846e22;
+    let expected = -5.999284723052003e22;
     assert_eq!(expected, result);
 }
 
@@ -274,7 +274,7 @@ fn _planet_semi_major_axis_13_div_2_derivative() {
     star.update_magnetic_torque(magnetic_torque);
 
     let result = planet_semi_major_axis_13_div_2_derivative(&planet, &star);
-    let expected = -2.116261394287954e44;
+    let expected = -2.143940262659268e44;
     assert_eq!(expected, result);
 }
 

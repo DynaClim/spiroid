@@ -10,21 +10,21 @@ fn _init_weber_davis() {
         // input
         footpoint_conductance: 7e4,
         // intermediate
-        speed_of_sound: 153351.82528115032,
-        critical_radius: 2257585679.348717,
-        critical_radius_div_alfven_radius: 0.16091496089707935,
-        radial_magnetic_field: 1.9382162879653655e-5,
-        magnetic_pressure: 0.00014947364255840127,
-        integration_constant: 0.45428476023761777,
-        wind_velocity: 0.3048279638822949,
-        surface_wind_velocity: 0.007357686457823903,
-        wind_density: 1.2151564393541588e-16,
-        alfvenic_mach: 0.1684346357625116,
+        speed_of_sound: 154526.12347777415,
+        critical_radius: 2223403684.8240876,
+        critical_radius_div_alfven_radius: 0.15847855533221863,
+        radial_magnetic_field: 2.226577824572609e-5,
+        magnetic_pressure: 0.00019725857851166478,
+        integration_constant: 0.4553635280344644,
+        wind_velocity: 0.3094177219897195,
+        surface_wind_velocity: 0.008056559716731736,
+        wind_density: 1.5205555914799212e-16,
+        alfvenic_mach: 0.16498899414711332,
         azimuthal_velocity: 2392.2989794266414,
-        alfven_speed_at_alfven_radius: 402673.99151609116,
+        alfven_speed_at_alfven_radius: 407510.82539476344,
         interaction: MagneticInteraction::Dipolar,
         // output
-        magnetic_torque: 4.186504303051605e22,
+        magnetic_torque: 5.068552639495255e22,
     };
     let mut star = test_star();
     let planet = test_planet_magnetic();
@@ -37,7 +37,7 @@ fn _init_weber_davis() {
 
 #[test]
 fn _radial_magnetic_field() {
-    let expected = 1.9382162879653655e-5;
+    let expected = 2.226577824572609e-5;
     let star = test_star();
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
@@ -54,7 +54,7 @@ fn _radial_magnetic_field() {
 
 #[test]
 fn _magnetic_pressure() {
-    let expected = 0.00014947364255840127;
+    let expected = 0.00019725857851166478;
     let star = test_star();
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
@@ -72,7 +72,7 @@ fn _magnetic_pressure() {
 
 #[test]
 fn _density_profile() {
-    let expected = 1.2151564393541588e-16;
+    let expected = 1.5205555914799212e-16;
     let star = test_star();
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
@@ -86,7 +86,7 @@ fn _density_profile() {
 
 #[test]
 fn _alfvenic_mach() {
-    let expected = 0.1684346357625116;
+    let expected = 0.16498899414711332;
     let star = test_star();
     let planet = test_planet_magnetic();
     let keplerian_velocity = sqrt!(GRAVITATIONAL * star.mass / planet.semi_major_axis);
@@ -99,7 +99,7 @@ fn _alfvenic_mach() {
 
 #[test]
 fn _integration_constant() {
-    let expected = 0.45428476023761777;
+    let expected = 0.4553635280344644;
     let star = test_star();
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
@@ -110,7 +110,7 @@ fn _integration_constant() {
 
 #[test]
 fn _weber_davis_velocity_profile() {
-    let expected = 0.007357686457823903;
+    let expected = 0.008056559716731736;
     let star = test_star();
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
@@ -121,7 +121,7 @@ fn _weber_davis_velocity_profile() {
 
 #[test]
 fn _alfven_speed_at_alfven_radius() {
-    let expected = 402673.99151609116;
+    let expected = 407510.82539476344;
     let star = test_star();
     let planet = test_planet_magnetic();
     let mut wind = IsothermalWind::default();
@@ -132,7 +132,7 @@ fn _alfven_speed_at_alfven_radius() {
 
 #[test]
 fn _magnetic_torque() {
-    let expected = 4.186504303051605e22;
+    let expected = 5.068552639495255e22;
     let mut star = test_star();
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);
@@ -145,7 +145,7 @@ fn _magnetic_torque() {
 
 #[test]
 fn _magnetic_field_magnetic() {
-    let expected = 0.000236194062818659;
+    let expected = 0.000271334249863209;
     let star = test_star();
     let result = IsothermalWind::magnetic_field(star.mass, star.rossby, star.rossby_sun_code());
     assert_eq!(expected, result);

@@ -5,7 +5,7 @@ use crate::universe::effects::tides::constant_time_lag::Equilibrium;
 use crate::universe::effects::tides::constant_time_lag::Inertial;
 use crate::universe::particles::TidalModel;
 use crate::universe::particles::planet::tests::{test_planet, test_planet_magnetic};
-use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_TIME_mode_fromfile};
+use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_TIME_MODE_FROMFILE};
 
 use pretty_assertions::assert_eq;
 use sci_file::read_csv_rows_from_file;
@@ -13,7 +13,7 @@ use sci_file::read_csv_rows_from_file;
 // Same structure and tests as `tests_mode_ardestani`, for the `FromFile` turnover-time mode and
 // a 1 Msun star. The structural values of `test_star` are those of the 2026 STAREVOL track of
 // Louis Amard (starevol_m1p00_2026.csv) at the solar age, 4.567 Gyr; the star rotates at the
-// solar rate. NOTE: that track is not tracked by git yet.
+// solar rate.
 
 fn add_interpolate_to_test_star(star: &mut Star) {
     star.evolution = Evolution::Starevol {
@@ -62,7 +62,7 @@ pub fn test_star() -> Star {
     let radiative_zone_angular_momentum = 1.7769647636667813e41;
     let convective_zone_angular_momentum = 1.6363250079109518e40;
     star.refresh(
-        TEST_TIME_mode_fromfile,
+        TEST_TIME_MODE_FROMFILE,
         radiative_zone_angular_momentum,
         convective_zone_angular_momentum,
         DISK_IS_DISSIPATED,
@@ -144,12 +144,12 @@ fn _rossby() {
 #[test]
 fn _convective_turnover_time() {
     // The turnover time `refresh` stores for the evolving star in FromFile mode: the file column
-    // (tauc_hp of the 2026 track) interpolated at TEST_TIME_mode_fromfile, not the Ardestani fit.
+    // (tauc_hp of the 2026 track) interpolated at TEST_TIME_MODE_FROMFILE, not the Ardestani fit.
     // Calling test_star_evolving is necessary for reading convective_turnover_time from the file.
     let expected = 1754129.196;
     let mut star = test_star_evolving();
     star.refresh(
-        TEST_TIME_mode_fromfile,
+        TEST_TIME_MODE_FROMFILE,
         star.radiative_zone_angular_momentum,
         star.convective_zone_angular_momentum,
         DISK_IS_DISSIPATED,

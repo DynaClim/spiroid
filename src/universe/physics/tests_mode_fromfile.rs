@@ -12,13 +12,13 @@ use crate::universe::particles::planet::tests::{
     test_planet, test_planet_kaula, test_planet_magnetic, test_planet_mercury,
 };
 use crate::universe::particles::star::tests_mode_fromfile::{test_star, test_star_evolving};
-use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_DISK_LIFETIME, TEST_TIME_mode_fromfile};
+use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_DISK_LIFETIME, TEST_TIME_MODE_FROMFILE};
 use crate::universe::{Particle, ParticleType};
 use pretty_assertions::assert_eq;
 
 // Same tests as `tests_mode_ardestani` for the FromFile turnover-time mode: the 1 Msun star of
 // `star::tests_mode_fromfile` (with the 2026 STAREVOL track for the evolving tests), evaluated at
-// TEST_TIME_mode_fromfile.
+// TEST_TIME_MODE_FROMFILE.
 
 #[test]
 fn _derivatives_magnetic() {
@@ -48,12 +48,12 @@ fn _derivatives_magnetic() {
             wind: WindModel::Enabled,
             general_relativity: GeneralRelativityModel::Disabled,
         },
-        time: TEST_TIME_mode_fromfile,
+        time: TEST_TIME_MODE_FROMFILE,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
         derivatives: UniverseIntegral::default(),
     };
-    universe.update(TEST_TIME_mode_fromfile, &y).unwrap();
+    universe.update(TEST_TIME_MODE_FROMFILE, &y).unwrap();
     let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,
@@ -99,13 +99,13 @@ fn _derivatives_tides() {
             wind: WindModel::Enabled,
             general_relativity: GeneralRelativityModel::Disabled,
         },
-        time: TEST_TIME_mode_fromfile,
+        time: TEST_TIME_MODE_FROMFILE,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
         derivatives: UniverseIntegral::default(),
     };
 
-    universe.update(TEST_TIME_mode_fromfile, &y).unwrap();
+    universe.update(TEST_TIME_MODE_FROMFILE, &y).unwrap();
     let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,
@@ -154,13 +154,13 @@ fn _derivatives_magnetic_tides() {
             wind: WindModel::Enabled,
             general_relativity: GeneralRelativityModel::Disabled,
         },
-        time: TEST_TIME_mode_fromfile,
+        time: TEST_TIME_MODE_FROMFILE,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
         derivatives: UniverseIntegral::default(),
     };
 
-    universe.update(TEST_TIME_mode_fromfile, &y).unwrap();
+    universe.update(TEST_TIME_MODE_FROMFILE, &y).unwrap();
     let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,
@@ -209,13 +209,13 @@ fn _derivatives_kaula() {
             wind: WindModel::Enabled,
             general_relativity: GeneralRelativityModel::Disabled,
         },
-        time: TEST_TIME_mode_fromfile,
+        time: TEST_TIME_MODE_FROMFILE,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
         derivatives: UniverseIntegral::default(),
     };
 
-    universe.update(TEST_TIME_mode_fromfile, &y).unwrap();
+    universe.update(TEST_TIME_MODE_FROMFILE, &y).unwrap();
     let mut result = UniverseIntegral::default();
     let _ = force(
         &universe.central_body,

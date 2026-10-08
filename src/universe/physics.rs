@@ -212,6 +212,8 @@ fn planet_spin_axis_inclination_derivative(planet: &Planet, star: &Star, kaula: 
 
 #[cfg(test)]
 mod tests_mode_ardestani;
+#[cfg(test)]
+mod tests_mode_fromfile;
 
 // General Relativity 1PN apsidal precession rate.
 // Einstein (1915)

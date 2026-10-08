@@ -675,6 +675,8 @@ impl Star {
 
 #[cfg(test)]
 pub mod tests_mode_ardestani;
+#[cfg(test)]
+pub mod tests_mode_fromfile;
 
 // References:
 // Ardestani et al. 2017, https://doi.org/10.1093/mnras/stx2039
